@@ -1,0 +1,6 @@
+{
+  "name": "KolaSTIK",
+  "description": "Aplikasi desain kolase foto estetik dengan template, filter, ekspor resolusi tinggi 13500px, edit layer manual, dan pratinjau split image presisi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
