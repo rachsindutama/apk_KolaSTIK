@@ -196,9 +196,13 @@ object TiledCanvasRenderer {
                         val imgMatrix = Matrix()
                         val srcW = imageBitmap.width.toFloat()
                         val srcH = imageBitmap.height.toFloat()
-                        val scale = maxOf(frameWidth / srcW, frameHeight / srcH) * layer.imageScale
-                        val imgLeft = centerX - (srcW * scale) / 2f + (layer.imageOffsetX * canvasTotalWidth)
-                        val imgTop = centerY - (srcH * scale) / 2f + (layer.imageOffsetY * canvasTotalHeight)
+                        val scale = if (layer.fitMode == "fit") {
+                            minOf(frameWidth / srcW, frameHeight / srcH) * layer.imageScale
+                        } else {
+                            maxOf(frameWidth / srcW, frameHeight / srcH) * layer.imageScale
+                        }
+                        val imgLeft = centerX - (srcW * scale) / 2f + (layer.imageOffsetX * frameWidth)
+                        val imgTop = centerY - (srcH * scale) / 2f + (layer.imageOffsetY * frameHeight)
 
                         imgMatrix.postScale(scale, scale)
                         imgMatrix.postTranslate(imgLeft, imgTop)

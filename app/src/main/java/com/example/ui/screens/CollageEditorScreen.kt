@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.ui.graphics.FilterQuality
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -110,7 +111,8 @@ fun CollageEditorScreen(
     val canUndo by viewModel.canUndo.collectAsState()
     val canRedo by viewModel.canRedo.collectAsState()
 
-    var activeTool by remember { mutableStateOf<String?>(null) } // null = main menu bar, "template", "photo", "size", "position", "style", "canvas", "cloud"
+    var activeTool by remember { mutableStateOf<String?>(null) }
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface // null = main menu bar, "template", "photo", "size", "position", "style", "canvas", "cloud"
     
     // Canvas Workspace Zoom & Pan States (Wheel scroll, pinch gesture, floating buttons)
     var canvasScale by remember { mutableStateOf(1f) }
@@ -160,7 +162,7 @@ fun CollageEditorScreen(
 
     // Back button behavior
     BackHandler {
-        viewModel.navigateTo(Screen.Projects)
+        viewModel.navigateTo(Screen.NewProject)
     }
 
     Scaffold(
@@ -191,7 +193,7 @@ fun CollageEditorScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateTo(Screen.Projects) }) {
+                    IconButton(onClick = { viewModel.navigateTo(Screen.NewProject) }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Kembali ke Beranda"
@@ -725,7 +727,7 @@ fun CollageEditorScreen(
                                                 // Draw base polaroid style before clipping
                                                 if (layer.shapeType == "polaroid") {
                                                     Modifier
-                                                        .background(Color.White)
+                                                        .background(MaterialTheme.colorScheme.onSurface)
                                                         .shadow(2.dp)
                                                 } else Modifier
                                                     .background(Color.Transparent)
@@ -762,7 +764,8 @@ fun CollageEditorScreen(
                                                 AsyncImage(
                                                     model = layer.imageUri,
                                                     contentDescription = "Layer image",
-                                                    contentScale = ContentScale.Crop,
+                                                    contentScale = if (layer.fitImage) ContentScale.Fit else ContentScale.Crop,
+                                                    filterQuality = FilterQuality.High,
                                                     colorFilter = if (layer.filterId != "none") {
                                                         ColorFilter.colorMatrix(FilterUtils.getColorMatrix(layer.filterId))
                                                     } else null,
@@ -862,7 +865,7 @@ fun CollageEditorScreen(
                                                 Icon(
                                                     imageVector = Icons.Default.Lock,
                                                     contentDescription = "Lapisan Terkunci",
-                                                    tint = Color.White,
+                                                    tint = MaterialTheme.colorScheme.onSurface,
                                                     modifier = Modifier.size(11.dp)
                                                 )
                                             }
@@ -887,6 +890,9 @@ fun CollageEditorScreen(
                                 modifier = Modifier
                                     .offset(x = selLeftDp, y = selTopDp)
                                     .size(width = selWidthDp, height = selHeightDp)
+                                    .graphicsLayer {
+                                        rotationZ = selectedLayer.rotation
+                                    }
                             ) {
                                 Canvas(modifier = Modifier.fillMaxSize()) {
                                     val safeScale = canvasScale.coerceAtLeast(0.15f)
@@ -897,7 +903,7 @@ fun CollageEditorScreen(
                                         style = Stroke(width = strokeOuter)
                                     )
                                     drawRect(
-                                        color = Color.White,
+                                        color = onSurfaceColor,
                                         style = Stroke(width = strokeInner)
                                     )
                                 }
@@ -927,13 +933,13 @@ fun CollageEditorScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Lock,
                                                 contentDescription = null,
-                                                tint = Color.White,
+                                                tint = MaterialTheme.colorScheme.onSurface,
                                                 modifier = Modifier.size(12.dp)
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(
                                                 text = "Terkunci (Tahan untuk opsi)",
-                                                color = Color.White,
+                                                color = onSurfaceColor,
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold
                                             )
@@ -1050,7 +1056,7 @@ fun CollageEditorScreen(
                                         modifier = Modifier
                                             .size(handleVisualSize)
                                             .shadow((2.5.dp / safeScale).coerceIn(1.dp, 4.dp), CircleShape)
-                                            .background(Color.White, CircleShape)
+                                            .background(MaterialTheme.colorScheme.onSurface, CircleShape)
                                             .border(handleBorderWidth, Color(0xFF007AFF), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -1135,7 +1141,7 @@ fun CollageEditorScreen(
                                         modifier = Modifier
                                             .size(handleVisualSize)
                                             .shadow((2.5.dp / safeScale).coerceIn(1.dp, 4.dp), CircleShape)
-                                            .background(Color.White, CircleShape)
+                                            .background(MaterialTheme.colorScheme.onSurface, CircleShape)
                                             .border(handleBorderWidth, Color(0xFF007AFF), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -1220,7 +1226,7 @@ fun CollageEditorScreen(
                                         modifier = Modifier
                                             .size(handleVisualSize)
                                             .shadow((2.5.dp / safeScale).coerceIn(1.dp, 4.dp), CircleShape)
-                                            .background(Color.White, CircleShape)
+                                            .background(MaterialTheme.colorScheme.onSurface, CircleShape)
                                             .border(handleBorderWidth, Color(0xFF007AFF), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -1302,7 +1308,7 @@ fun CollageEditorScreen(
                                         modifier = Modifier
                                             .size(handleVisualSize)
                                             .shadow((2.5.dp / safeScale).coerceIn(1.dp, 4.dp), CircleShape)
-                                            .background(Color.White, CircleShape)
+                                            .background(MaterialTheme.colorScheme.onSurface, CircleShape)
                                             .border(handleBorderWidth, Color(0xFF007AFF), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -1358,7 +1364,7 @@ fun CollageEditorScreen(
                             text = "${(canvasScale * 100).toInt()}%",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = onSurfaceColor,
                             modifier = Modifier
                                 .clickable {
                                     canvasScale = 1f
@@ -1866,7 +1872,23 @@ fun CollageEditorScreen(
                                             // Photo zoom/scale & pan sliders
                                             if (layer.imageUri != null) {
                                                 Spacer(modifier = Modifier.height(8.dp))
-                                                Text("Zoom & Geser Foto Dalam Frame", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text("Zoom & Geser Foto Dalam Frame", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                                    OutlinedButton(
+                                                        onClick = {
+                                                            viewModel.recordSnapshot()
+                                                            viewModel.updateLayer(layer.copy(fitImage = !layer.fitImage, imageScale = 1.0f, imageOffsetX = 0f, imageOffsetY = 0f))
+                                                        },
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                        modifier = Modifier.height(28.dp)
+                                                    ) {
+                                                        Text(if (layer.fitImage) "Isi Penuh (Crop)" else "Fit Gambar", fontSize = 10.sp)
+                                                    }
+                                                }
                                                 
                                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                                                     item {
@@ -3254,7 +3276,7 @@ fun CollageEditorScreen(
 
     // Removed Tiled Inspector Dialog
 
-    // Photoshop-Style Simple Layers Panel Bottom Sheet
+    // Layer Panel
     if (showLayerContextMenu) {
         val targetLayer = layers.find { it.id == (contextMenuLayerId ?: selectedId) } ?: layers.find { it.id == selectedId }
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -3263,7 +3285,8 @@ fun CollageEditorScreen(
             onDismissRequest = { showLayerContextMenu = false },
             sheetState = sheetState,
             dragHandle = { BottomSheetDefaults.DragHandle() },
-            containerColor = Color(0xFF1E2124), // Photoshop dark slate theme container
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 8.dp
         ) {
             Column(
@@ -3272,7 +3295,7 @@ fun CollageEditorScreen(
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 24.dp)
             ) {
-                // 1. Photoshop Header Bar
+                // Header Bar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -3288,7 +3311,7 @@ fun CollageEditorScreen(
                             Icon(
                                 imageVector = Icons.Default.Layers,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -3296,19 +3319,19 @@ fun CollageEditorScreen(
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "Layers",
-                                    color = Color.White,
+                                    text = "Lapisan",
+                                    color = onSurfaceColor,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
-                                    color = Color(0xFF2C3036)
+                                    color = MaterialTheme.colorScheme.surfaceVariant
                                 ) {
                                     Text(
                                         text = "${layers.size}",
-                                        color = Color(0xFF9E9E9E),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 1.dp)
@@ -3316,8 +3339,8 @@ fun CollageEditorScreen(
                                 }
                             }
                             Text(
-                                text = "Panel Lapisan Gaya Photoshop",
-                                color = Color(0xFF8E8E93),
+                                text = "Panel Lapisan",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 10.sp
                             )
                         }
@@ -3330,7 +3353,7 @@ fun CollageEditorScreen(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Tutup",
-                            tint = Color(0xFF8E8E93),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -3338,12 +3361,12 @@ fun CollageEditorScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // 2. Photoshop Quick Properties Bar (Opacity & Blend Mode)
+                // Properties Bar
                 if (targetLayer != null) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFF282C34),
-                        border = BorderStroke(1.dp, Color(0xFF383C44)),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -3355,12 +3378,12 @@ fun CollageEditorScreen(
                             // Blend mode pill
                             Surface(
                                 shape = RoundedCornerShape(4.dp),
-                                color = Color(0xFF1E2124),
+                                color = MaterialTheme.colorScheme.surface,
                                 border = BorderStroke(1.dp, Color(0xFF3A3F47))
                             ) {
                                 Text(
                                     text = "Normal",
-                                    color = Color(0xFFD1D5DB),
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -3372,7 +3395,7 @@ fun CollageEditorScreen(
                             // Opacity label & slider
                             Text(
                                 text = "Opacity:",
-                                color = Color(0xFF9CA3AF),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -3381,7 +3404,7 @@ fun CollageEditorScreen(
 
                             Text(
                                 text = "${(targetLayer.opacity * 100).toInt()}%",
-                                color = Color(0xFF60A5FA),
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.width(36.dp)
@@ -3403,11 +3426,11 @@ fun CollageEditorScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                 }
 
-                // 3. Photoshop Vertical Stacked Layer List (Top = Highest Z-Index, Bottom = Background)
+                // Layer List
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF23272D),
-                    border = BorderStroke(1.dp, Color(0xFF32363E)),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     androidx.compose.foundation.lazy.LazyColumn(
@@ -3460,7 +3483,7 @@ fun CollageEditorScreen(
                                     Icon(
                                         imageVector = if (layerItem.isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                         contentDescription = if (layerItem.isVisible) "Sembunyikan" else "Tampilkan",
-                                        tint = if (layerItem.isVisible) Color(0xFFD1D5DB) else Color(0xFF555B66),
+                                        tint = if (layerItem.isVisible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(17.dp)
                                     )
                                 }
@@ -3476,20 +3499,20 @@ fun CollageEditorScreen(
                                     Icon(
                                         imageVector = if (layerItem.isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
                                         contentDescription = if (layerItem.isLocked) "Buka Kunci" else "Kunci",
-                                        tint = if (layerItem.isLocked) Color(0xFFFF9500) else Color(0xFF555B66),
+                                        tint = if (layerItem.isLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
 
                                 Spacer(modifier = Modifier.width(4.dp))
 
-                                // Photoshop Layer Thumbnail (Checkerboard background with clipped preview)
+                                // Layer Thumbnail
                                 Box(
                                     modifier = Modifier
                                         .size(38.dp)
                                         .clip(RoundedCornerShape(4.dp))
-                                        .background(Color(0xFF14171A))
-                                        .border(1.dp, if (isSelected) Color(0xFF007AFF) else Color(0xFF3F444E), RoundedCornerShape(4.dp)),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (layerItem.imageUri != null) {
@@ -3522,7 +3545,7 @@ fun CollageEditorScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             text = layerItem.name.ifEmpty { "Layer $layerNumber" },
-                                            color = if (isSelected) Color.White else Color(0xFFD1D5DB),
+                                            color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color(0xFFD1D5DB),
                                             fontSize = 12.sp,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                         )
@@ -3551,7 +3574,7 @@ fun CollageEditorScreen(
                                                 "polaroid" -> "Frame Polaroid"
                                                 else -> "Frame Kotak"
                                             },
-                                            color = Color(0xFF8E8E93),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 10.sp
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
@@ -3644,7 +3667,7 @@ fun CollageEditorScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = "Background (Kanvas)",
-                                        color = Color(0xFF9CA3AF),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -3664,8 +3687,8 @@ fun CollageEditorScreen(
                 // 4. Photoshop Bottom Action Bar (Iconic Footer Toolbar)
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF282C34),
-                    border = BorderStroke(1.dp, Color(0xFF383C44)),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -3686,7 +3709,7 @@ fun CollageEditorScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.AddBox, contentDescription = "Tambah Layer", tint = Color(0xFF60A5FA), modifier = Modifier.size(18.dp))
-                                Text("+ Layer", fontSize = 8.sp, color = Color(0xFF60A5FA), fontWeight = FontWeight.Bold)
+                                Text("+ Layer", fontSize = 8.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -3719,7 +3742,7 @@ fun CollageEditorScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = "Duplikat", tint = Color(0xFFD1D5DB), modifier = Modifier.size(18.dp))
-                                Text("Duplikat", fontSize = 8.sp, color = Color(0xFFD1D5DB))
+                                Text("Duplikat", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
 
@@ -3737,7 +3760,7 @@ fun CollageEditorScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.FilterCenterFocus, contentDescription = "Pusatkan", tint = Color(0xFFD1D5DB), modifier = Modifier.size(18.dp))
-                                Text("Pusat", fontSize = 8.sp, color = Color(0xFFD1D5DB))
+                                Text("Pusat", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
 
@@ -3754,7 +3777,7 @@ fun CollageEditorScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Ganti Foto", tint = Color(0xFFD1D5DB), modifier = Modifier.size(18.dp))
-                                Text("Foto", fontSize = 8.sp, color = Color(0xFFD1D5DB))
+                                Text("Foto", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
 

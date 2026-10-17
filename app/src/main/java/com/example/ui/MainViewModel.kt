@@ -145,13 +145,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     data class GuideLayoutConfig(
         val enabled: Boolean = false,
-        val columnsNumber: Int = 3,
+        val columnsNumber: Int = 0,
         val columnWidthPx: Float = 0f,
         val gutterPx: Float = 0f,
-        val marginTopPx: Float = 100f,
-        val marginBottomPx: Float = 100f,
-        val marginLeftPx: Float = 100f,
-        val marginRightPx: Float = 100f
+        val marginTopPx: Float = 0f,
+        val marginBottomPx: Float = 0f,
+        val marginLeftPx: Float = 0f,
+        val marginRightPx: Float = 0f
     )
     val guideLayoutConfig = MutableStateFlow(GuideLayoutConfig())
 
@@ -181,23 +181,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             clearUndoRedo()
             val preset = TemplatePresets.presets.find { it.id == presetId }
+            activeProjectId.value = null
+            activeProjectName.value = if (preset != null) "KolaSTIK ${preset.name}" else "Untitled Collage"
+            activeAspectRatio.value = preset?.defaultAspect ?: "1:1"
+            activeBackgroundColor.value = 0xFFF5F5F7.toInt()
             if (preset != null) {
-                activeProjectId.value = null
-                activeProjectName.value = "KolaSTIK ${preset.name}"
-                activeAspectRatio.value = preset.defaultAspect
-                activeBackgroundColor.value = 0xFFFFFFFF.toInt()
                 _layers.value = preset.generateLayers()
                 selectedLayerId.value = _layers.value.firstOrNull()?.id
             } else {
-                // Default fallback
-                activeProjectId.value = null
-                activeProjectName.value = "Untitled Collage"
-                activeAspectRatio.value = "1:1"
-                activeBackgroundColor.value = 0xFFF5F5F7.toInt()
-                _layers.value = listOf(
-                    LayerModel(UUID.randomUUID().toString(), 0.1f, 0.1f, 0.8f, 0.8f, zIndex = 1, borderThickness = 2f, cornerRadius = 8f)
-                )
-                selectedLayerId.value = _layers.value.firstOrNull()?.id
+                _layers.value = emptyList()
+                selectedLayerId.value = null
             }
             navigateTo(Screen.Editor)
         }
@@ -212,10 +205,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeProjectName.value = "Custom ${safeW}x${safeH}"
             activeAspectRatio.value = "$safeW:$safeH"
             activeBackgroundColor.value = 0xFFF5F5F7.toInt()
-            _layers.value = listOf(
-                LayerModel(UUID.randomUUID().toString(), 0.1f, 0.1f, 0.8f, 0.8f, zIndex = 1, borderThickness = 2f, cornerRadius = 8f)
-            )
-            selectedLayerId.value = _layers.value.firstOrNull()?.id
+            _layers.value = emptyList()
+            selectedLayerId.value = null
             navigateTo(Screen.Editor)
         }
     }
@@ -326,9 +317,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             width = 0.5f,
             height = 0.5f,
             zIndex = (_layers.value.maxOfOrNull { it.zIndex } ?: 0) + 1,
-            borderThickness = 2f,
+            borderThickness = 0f,
             borderColor = 0xFFFFFFFF.toInt(),
-            cornerRadius = 8f,
+            cornerRadius = 0f,
             shapeType = "rect",
             imageUri = imageUri
         )

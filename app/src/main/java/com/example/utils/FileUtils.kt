@@ -170,4 +170,36 @@ object FileUtils {
             return null
         }
     }
+
+    /**
+     * Reads image bounds (width x height) without decoding the full pixel data.
+     * Supports content://, file://, and local file paths.
+     */
+    fun getImageDimensions(context: Context, uriString: String): Pair<Int, Int>? {
+        return try {
+            val uri = Uri.parse(uriString)
+            val stream = try {
+                context.contentResolver.openInputStream(uri)
+            } catch (_: Exception) {
+                null
+            } ?: run {
+                val path = uri.path ?: uriString
+                val file = File(path)
+                if (file.exists()) file.inputStream() else null
+            }
+
+            stream?.use { input ->
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                BitmapFactory.decodeStream(input, null, options)
+                if (options.outWidth > 0 && options.outHeight > 0) {
+                    Pair(options.outWidth, options.outHeight)
+                } else null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }

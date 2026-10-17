@@ -79,7 +79,7 @@ fun ImageSplitterScreen(
 
     // Navigation back handler
     BackHandler {
-        viewModel.navigateTo(Screen.Projects)
+        viewModel.navigateTo(Screen.NewProject)
     }
 
     // Photo Picker Launcher
@@ -98,7 +98,7 @@ fun ImageSplitterScreen(
             TopAppBar(
                 title = { Text("Aesthetic Image Splitter", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateTo(Screen.Projects) }) {
+                    IconButton(onClick = { viewModel.navigateTo(Screen.NewProject) }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Kembali ke Beranda"

@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -59,7 +61,7 @@ fun NewProjectScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "KolaSTIK - New Project",
+                            "KolaSTIK",
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
                         )
@@ -110,14 +112,14 @@ fun NewProjectScreen(
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            "Buat Proyek Baru (New Project)",
+                            "Buat Proyek Baru",
                             color = Color.White,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            "Pilih Template Sosmed atau atur Dimensi Kanvas Manual, lalu mulai Edit dan Ekspor hasil kreasimu.",
+                            "Pilih Template atau atur Kanvas secara Manual, lalu mulai Edit.",
                             color = Color.White.copy(alpha = 0.9f),
                             fontSize = 13.sp,
                             lineHeight = 18.sp
@@ -159,7 +161,7 @@ fun NewProjectScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Set Dimensi Manual",
+                                "Set Kanvas",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -205,7 +207,7 @@ fun NewProjectScreen(
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                             Text(
-                                "Potong grid presisi sosmed",
+                                "Potong grid presisi",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
                                 maxLines = 1,
@@ -220,15 +222,18 @@ fun NewProjectScreen(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Pilih Template Sosmed",
+                    "Pilih Template",
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
                 
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.heightIn(max = 600.dp)
                 ) {
                     items(TemplatePresets.presets) { preset ->
                         NewProjTemplatePresetCard(preset) {
@@ -287,7 +292,7 @@ fun NewProjectScreen(
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Text(
-                                "Pilih Template Sosmed di atas atau buat Kanvas Manual untuk mulai mengedit",
+                                "Pilih Template di atas atau buat Kanvas Manual untuk mulai mengedit",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
                                 textAlign = TextAlign.Center,
@@ -315,12 +320,12 @@ fun NewProjectScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.AspectRatio, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 8.dp))
-                    Text("Set Dimensi Kanvas Manual", fontWeight = FontWeight.Bold)
+                    Text("Set Kanvas", fontWeight = FontWeight.Bold)
                 }
             },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Masukkan ukuran lebar dan tinggi dalam piksel (maks 13500px untuk cetak ultra-hd):", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Masukkan ukuran lebar dan tinggi dalam piksel:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     OutlinedTextField(
@@ -344,13 +349,13 @@ fun NewProjectScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { widthInput = "1080"; heightInput = "1080" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
-                            Text("1:1 (1080p)", fontSize = 11.sp)
+                            Text("1:1", fontSize = 11.sp)
                         }
                         Button(onClick = { widthInput = "1080"; heightInput = "1350" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
-                            Text("4:5 (Ig)", fontSize = 11.sp)
+                            Text("4:5", fontSize = 11.sp)
                         }
                         Button(onClick = { widthInput = "1080"; heightInput = "1920" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
-                            Text("9:16 (Story)", fontSize = 11.sp)
+                            Text("9:16", fontSize = 11.sp)
                         }
                     }
                 }

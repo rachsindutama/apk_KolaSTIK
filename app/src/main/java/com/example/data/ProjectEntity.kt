@@ -49,7 +49,9 @@ data class LayerModel(
     var innerShadowColor: Int = 0x80000000.toInt(),
     var outerGlowEnabled: Boolean = false,
     var outerGlowRadius: Float = 14f, // dp
-    var outerGlowColor: Int = 0xFFFFD700.toInt()
+    var outerGlowColor: Int = 0xFFFFD700.toInt(),
+    var fitImage: Boolean = false,
+    var lockAspectRatio: Boolean = true
 ) {
     fun toJsonObject(): JSONObject {
         val obj = JSONObject()
@@ -87,6 +89,8 @@ data class LayerModel(
         obj.put("outerGlowEnabled", outerGlowEnabled)
         obj.put("outerGlowRadius", outerGlowRadius.toDouble())
         obj.put("outerGlowColor", outerGlowColor)
+        obj.put("fitImage", fitImage)
+        obj.put("lockAspectRatio", lockAspectRatio)
         return obj
     }
 
@@ -125,7 +129,9 @@ data class LayerModel(
                 innerShadowColor = obj.optInt("innerShadowColor", 0x80000000.toInt()),
                 outerGlowEnabled = obj.optBoolean("outerGlowEnabled", false),
                 outerGlowRadius = obj.optDouble("outerGlowRadius", 14.0).toFloat(),
-                outerGlowColor = obj.optInt("outerGlowColor", 0xFFFFD700.toInt())
+                outerGlowColor = obj.optInt("outerGlowColor", 0xFFFFD700.toInt()),
+                fitImage = obj.optBoolean("fitImage", false),
+                lockAspectRatio = obj.optBoolean("lockAspectRatio", true)
             )
         }
 

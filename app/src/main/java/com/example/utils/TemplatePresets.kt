@@ -21,10 +21,10 @@ object TemplatePresets {
             iconName = "grid_view",
             generateLayers = {
                 listOf(
-                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.02f, 0.46f, 0.46f, zIndex = 1, borderThickness = 2f, cornerRadius = 4f),
-                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.02f, 0.46f, 0.46f, zIndex = 2, borderThickness = 2f, cornerRadius = 4f),
-                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.52f, 0.46f, 0.46f, zIndex = 3, borderThickness = 2f, cornerRadius = 4f),
-                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.52f, 0.46f, 0.46f, zIndex = 4, borderThickness = 2f, cornerRadius = 4f)
+                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.02f, 0.46f, 0.46f, zIndex = 1, borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.02f, 0.46f, 0.46f, zIndex = 2, borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.52f, 0.46f, 0.46f, zIndex = 3, borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.52f, 0.46f, 0.46f, zIndex = 4, borderThickness = 0f, cornerRadius = 0f)
                 )
             }
         ),
@@ -35,9 +35,9 @@ object TemplatePresets {
             iconName = "view_quilt",
             generateLayers = {
                 listOf(
-                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.02f, 0.96f, 0.46f, zIndex = 1, borderThickness = 2f, cornerRadius = 8f),
-                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.51f, 0.46f, 0.47f, zIndex = 2, borderThickness = 2f, cornerRadius = 8f),
-                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.51f, 0.46f, 0.47f, zIndex = 3, borderThickness = 2f, cornerRadius = 8f)
+                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.02f, 0.96f, 0.46f, zIndex = 1, borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.51f, 0.46f, 0.47f, zIndex = 2, borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.51f, 0.46f, 0.47f, zIndex = 3, borderThickness = 0f, cornerRadius = 0f)
                 )
             }
         ),
@@ -48,8 +48,8 @@ object TemplatePresets {
             iconName = "style",
             generateLayers = {
                 listOf(
-                    LayerModel(UUID.randomUUID().toString(), 0.08f, 0.12f, 0.4f, 0.65f, rotation = -5f, zIndex = 1, shapeType = "polaroid", borderThickness = 4f, borderColor = 0xFFFFFFFF.toInt()),
-                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.22f, 0.4f, 0.65f, rotation = 5f, zIndex = 2, shapeType = "polaroid", borderThickness = 4f, borderColor = 0xFFFFFFFF.toInt())
+                    LayerModel(UUID.randomUUID().toString(), 0.08f, 0.12f, 0.4f, 0.65f, rotation = -5f, zIndex = 1, shapeType = "polaroid", borderThickness = 0f, borderColor = 0xFFFFFFFF.toInt(), cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.22f, 0.4f, 0.65f, rotation = 5f, zIndex = 2, shapeType = "polaroid", borderThickness = 0f, borderColor = 0xFFFFFFFF.toInt(), cornerRadius = 0f)
                 )
             }
         ),
@@ -60,10 +60,10 @@ object TemplatePresets {
             iconName = "auto_stories",
             generateLayers = {
                 listOf(
-                    LayerModel(UUID.randomUUID().toString(), 0f, 0f, 1f, 1f, zIndex = 0, shapeType = "rect"),
-                    LayerModel(UUID.randomUUID().toString(), 0.15f, 0.1f, 0.7f, 0.45f, zIndex = 1, borderThickness = 6f, borderColor = 0xFFFFFFFF.toInt(), cornerRadius = 4f),
-                    LayerModel(UUID.randomUUID().toString(), 0.1f, 0.62f, 0.38f, 0.3f, zIndex = 2, borderThickness = 3f, borderColor = 0xFFFFFFFF.toInt(), cornerRadius = 4f),
-                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.62f, 0.38f, 0.3f, zIndex = 3, borderThickness = 3f, borderColor = 0xFFFFFFFF.toInt(), cornerRadius = 4f)
+                    LayerModel(UUID.randomUUID().toString(), 0f, 0f, 1f, 1f, zIndex = 0, shapeType = "rect", borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.15f, 0.1f, 0.7f, 0.45f, zIndex = 1, borderThickness = 0f, borderColor = 0xFFFFFFFF.toInt(), cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.1f, 0.62f, 0.38f, 0.3f, zIndex = 2, borderThickness = 0f, borderColor = 0xFFFFFFFF.toInt(), cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.62f, 0.38f, 0.3f, zIndex = 3, borderThickness = 0f, borderColor = 0xFFFFFFFF.toInt(), cornerRadius = 0f)
                 )
             }
         ),
@@ -74,10 +74,10 @@ object TemplatePresets {
             iconName = "auto_awesome",
             generateLayers = {
                 listOf(
-                    LayerModel(UUID.randomUUID().toString(), 0.05f, 0.06f, 0.42f, 0.4f, rotation = -8f, zIndex = 1, shapeType = "oval", borderThickness = 1f, borderColor = 0xFF000000.toInt()),
-                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.05f, 0.42f, 0.42f, rotation = 6f, zIndex = 2, shapeType = "rounded", borderThickness = 2f, borderColor = 0xFFFFFFFF.toInt(), cornerRadius = 16f),
-                    LayerModel(UUID.randomUUID().toString(), 0.06f, 0.52f, 0.42f, 0.42f, rotation = 4f, zIndex = 3, shapeType = "rect", borderThickness = 3f, borderColor = 0xFFFFFFFF.toInt()),
-                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.52f, 0.42f, 0.42f, rotation = -6f, zIndex = 4, shapeType = "polaroid", borderThickness = 5f, borderColor = 0xFFFFFFFF.toInt())
+                    LayerModel(UUID.randomUUID().toString(), 0.05f, 0.06f, 0.42f, 0.4f, rotation = -8f, zIndex = 1, shapeType = "oval", borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.05f, 0.42f, 0.42f, rotation = 6f, zIndex = 2, shapeType = "rounded", borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.06f, 0.52f, 0.42f, 0.42f, rotation = 4f, zIndex = 3, shapeType = "rect", borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.52f, 0.52f, 0.42f, 0.42f, rotation = -6f, zIndex = 4, shapeType = "polaroid", borderThickness = 0f, cornerRadius = 0f)
                 )
             }
         ),
@@ -88,9 +88,9 @@ object TemplatePresets {
             iconName = "view_column",
             generateLayers = {
                 listOf(
-                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.02f, 0.30f, 0.96f, zIndex = 1, borderThickness = 1f, cornerRadius = 2f),
-                    LayerModel(UUID.randomUUID().toString(), 0.35f, 0.02f, 0.30f, 0.96f, zIndex = 2, borderThickness = 1f, cornerRadius = 2f),
-                    LayerModel(UUID.randomUUID().toString(), 0.68f, 0.02f, 0.30f, 0.96f, zIndex = 3, borderThickness = 1f, cornerRadius = 2f)
+                    LayerModel(UUID.randomUUID().toString(), 0.02f, 0.02f, 0.30f, 0.96f, zIndex = 1, borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.35f, 0.02f, 0.30f, 0.96f, zIndex = 2, borderThickness = 0f, cornerRadius = 0f),
+                    LayerModel(UUID.randomUUID().toString(), 0.68f, 0.02f, 0.30f, 0.96f, zIndex = 3, borderThickness = 0f, cornerRadius = 0f)
                 )
             }
         ),
@@ -100,9 +100,7 @@ object TemplatePresets {
             description = "Kanvas kosong sepenuhnya untuk kebebasan kreasimu",
             iconName = "dashboard_customize",
             generateLayers = {
-                listOf(
-                    LayerModel(UUID.randomUUID().toString(), 0.25f, 0.25f, 0.5f, 0.5f, zIndex = 1, borderThickness = 3f, cornerRadius = 8f)
-                )
+                emptyList()
             }
         )
     )
