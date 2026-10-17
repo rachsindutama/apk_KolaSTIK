@@ -56,7 +56,7 @@ fun NewProjectScreen(
                         Icon(
                             imageVector = Icons.Default.AutoAwesome,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -75,7 +75,7 @@ fun NewProjectScreen(
                         Icon(
                             imageVector = Icons.Default.CloudDownload,
                             contentDescription = "Import Cloud Layout",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -98,29 +98,21 @@ fun NewProjectScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.secondary,
-                                    MaterialTheme.colorScheme.tertiary
-                                )
-                            )
-                        )
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(24.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             "Buat Proyek Baru",
-                            color = Color.White,
-                            fontSize = 22.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             "Pilih Template atau atur Kanvas secara Manual, lalu mulai Edit.",
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp,
                             lineHeight = 18.sp
                         )
@@ -144,7 +136,7 @@ fun NewProjectScreen(
                             .height(120.dp)
                             .testTag("manual_canvas_card"),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     ) {
                         Column(
@@ -156,7 +148,7 @@ fun NewProjectScreen(
                             Icon(
                                 imageVector = Icons.Default.AspectRatio,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(28.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
@@ -164,12 +156,12 @@ fun NewProjectScreen(
                                 "Set Kanvas",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 "Atur ukuran piksel & aspek",
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -184,7 +176,7 @@ fun NewProjectScreen(
                             .height(120.dp)
                             .testTag("splitter_card_button"),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     ) {
                         Column(
@@ -196,7 +188,7 @@ fun NewProjectScreen(
                             Icon(
                                 imageVector = Icons.Default.GridView,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(28.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
@@ -204,12 +196,12 @@ fun NewProjectScreen(
                                 "Split Gambar",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 "Potong grid presisi",
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -349,13 +341,13 @@ fun NewProjectScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { widthInput = "1080"; heightInput = "1080" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
-                            Text("1:1", fontSize = 11.sp)
+                            Text("1:1", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                         }
                         Button(onClick = { widthInput = "1080"; heightInput = "1350" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
-                            Text("4:5", fontSize = 11.sp)
+                            Text("4:5", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                         }
                         Button(onClick = { widthInput = "1080"; heightInput = "1920" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
-                            Text("9:16", fontSize = 11.sp)
+                            Text("9:16", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }

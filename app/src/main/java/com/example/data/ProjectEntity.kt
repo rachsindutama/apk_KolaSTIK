@@ -10,7 +10,7 @@ data class ProjectEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
     val aspectRatio: String = "1:1", // "1:1", "4:5", "16:9", "9:16", "3:4", "A4"
-    val backgroundColor: Int = 0xFFF5F5F7.toInt(),
+    val backgroundColor: Int = 0xFFFFFFFF.toInt(),
     val layersJson: String, // JSONArray of layers
     val timestamp: Long = System.currentTimeMillis()
 )

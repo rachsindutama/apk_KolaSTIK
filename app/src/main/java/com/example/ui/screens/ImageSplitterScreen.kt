@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +22,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -392,85 +396,202 @@ fun ImageSplitterScreen(
                             .fillMaxWidth()
                             .padding(20.dp)
                     ) {
-                        // Presets of grids
-                        Text(
-                            "Preset Slices Grid",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(bottom = 16.dp)
+                        // Header & Summary
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val presetsList = listOf(
-                                Triple(1, 3, "Column 1x3"),
-                                Triple(3, 1, "Row 3x1"),
-                                Triple(2, 2, "Square 2x2"),
-                                Triple(3, 3, "Instagram 3x3"),
-                                Triple(3, 4, "Portrait 3x4")
+                            Text(
+                                "Ukuran Grid Potongan",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
                             )
-                            items(presetsList) { preset ->
-                                val isSelected = cols == preset.first && rows == preset.second
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        viewModel.splitterCols.value = preset.first
-                                        viewModel.splitterRows.value = preset.second
-                                        previewSplitImages = null
-                                    },
-                                    label = { Text(preset.third, fontSize = 12.sp) },
-                                    leadingIcon = if (isSelected) {
-                                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                    } else null
-                                )
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.GridOn,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        "${cols * rows} Total Potongan",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
                             }
                         }
 
-                        // Custom Grid Sliders
+                        // Flexible Stepper Controls (Free, Unlimited > 6)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                            // Stepper Kolom (Vertikal)
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text("Kolom (Vertikal)", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
-                                    Text("$cols", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(
+                                        "Kolom (Vertikal)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        FilledTonalIconButton(
+                                            onClick = {
+                                                if (cols > 1) {
+                                                    viewModel.splitterCols.value = cols - 1
+                                                    previewSplitImages = null
+                                                }
+                                            },
+                                            enabled = cols > 1,
+                                            modifier = Modifier.size(36.dp).testTag("decrement_cols_button")
+                                        ) {
+                                            Icon(Icons.Default.Remove, contentDescription = "Kurang Kolom", modifier = Modifier.size(16.dp))
+                                        }
+
+                                        var colInput by remember(cols) { mutableStateOf(cols.toString()) }
+                                        BasicTextField(
+                                            value = colInput,
+                                            onValueChange = { input ->
+                                                val filtered = input.filter { it.isDigit() }
+                                                colInput = filtered
+                                                val parsed = filtered.toIntOrNull()
+                                                if (parsed != null && parsed >= 1) {
+                                                    viewModel.splitterCols.value = parsed.coerceAtMost(100)
+                                                    previewSplitImages = null
+                                                }
+                                            },
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            singleLine = true,
+                                            textStyle = androidx.compose.ui.text.TextStyle(
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                textAlign = TextAlign.Center,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            ),
+                                            modifier = Modifier
+                                                .width(48.dp)
+                                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                                .padding(vertical = 6.dp)
+                                                .testTag("cols_input_field")
+                                        )
+
+                                        FilledTonalIconButton(
+                                            onClick = {
+                                                viewModel.splitterCols.value = (cols + 1).coerceAtMost(100)
+                                                previewSplitImages = null
+                                            },
+                                            modifier = Modifier.size(36.dp).testTag("increment_cols_button")
+                                        ) {
+                                            Icon(Icons.Default.Add, contentDescription = "Tambah Kolom", modifier = Modifier.size(16.dp))
+                                        }
+                                    }
                                 }
-                                Slider(
-                                    value = cols.toFloat(),
-                                    onValueChange = { 
-                                        viewModel.splitterCols.value = it.toInt()
-                                        previewSplitImages = null
-                                    },
-                                    valueRange = 1f..6f,
-                                    steps = 4,
-                                    modifier = Modifier.testTag("columns_slider")
-                                )
                             }
 
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                            // Stepper Baris (Horizontal)
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text("Baris (Horizontal)", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
-                                    Text("$rows", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(
+                                        "Baris (Horizontal)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        FilledTonalIconButton(
+                                            onClick = {
+                                                if (rows > 1) {
+                                                    viewModel.splitterRows.value = rows - 1
+                                                    previewSplitImages = null
+                                                }
+                                            },
+                                            enabled = rows > 1,
+                                            modifier = Modifier.size(36.dp).testTag("decrement_rows_button")
+                                        ) {
+                                            Icon(Icons.Default.Remove, contentDescription = "Kurang Baris", modifier = Modifier.size(16.dp))
+                                        }
+
+                                        var rowInput by remember(rows) { mutableStateOf(rows.toString()) }
+                                        BasicTextField(
+                                            value = rowInput,
+                                            onValueChange = { input ->
+                                                val filtered = input.filter { it.isDigit() }
+                                                rowInput = filtered
+                                                val parsed = filtered.toIntOrNull()
+                                                if (parsed != null && parsed >= 1) {
+                                                    viewModel.splitterRows.value = parsed.coerceAtMost(100)
+                                                    previewSplitImages = null
+                                                }
+                                            },
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            singleLine = true,
+                                            textStyle = androidx.compose.ui.text.TextStyle(
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                textAlign = TextAlign.Center,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            ),
+                                            modifier = Modifier
+                                                .width(48.dp)
+                                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                                .padding(vertical = 6.dp)
+                                                .testTag("rows_input_field")
+                                        )
+
+                                        FilledTonalIconButton(
+                                            onClick = {
+                                                viewModel.splitterRows.value = (rows + 1).coerceAtMost(100)
+                                                previewSplitImages = null
+                                            },
+                                            modifier = Modifier.size(36.dp).testTag("increment_rows_button")
+                                        ) {
+                                            Icon(Icons.Default.Add, contentDescription = "Tambah Baris", modifier = Modifier.size(16.dp))
+                                        }
+                                    }
                                 }
-                                Slider(
-                                    value = rows.toFloat(),
-                                    onValueChange = { 
-                                        viewModel.splitterRows.value = it.toInt()
-                                        previewSplitImages = null
-                                    },
-                                    valueRange = 1f..6f,
-                                    steps = 4,
-                                    modifier = Modifier.testTag("rows_slider")
-                                )
                             }
                         }
 

@@ -196,7 +196,7 @@ object TiledCanvasRenderer {
                         val imgMatrix = Matrix()
                         val srcW = imageBitmap.width.toFloat()
                         val srcH = imageBitmap.height.toFloat()
-                        val scale = if (layer.fitMode == "fit") {
+                        val scale = if (layer.fitImage) {
                             minOf(frameWidth / srcW, frameHeight / srcH) * layer.imageScale
                         } else {
                             maxOf(frameWidth / srcW, frameHeight / srcH) * layer.imageScale

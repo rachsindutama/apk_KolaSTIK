@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -93,29 +94,21 @@ fun ProjectListScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.secondary,
-                                    MaterialTheme.colorScheme.tertiary
-                                )
-                            )
-                        )
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(24.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             "Studio Kolase Estetik",
-                            color = Color.White,
-                            fontSize = 22.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             "Kreasikan kolase resolusi tinggi hingga 13500px untuk kebutuhan cetak profesional dengan kontrol penuh tiap elemen.",
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp,
                             lineHeight = 18.sp
                         )
@@ -163,7 +156,7 @@ fun ProjectListScreen(
                             Text(
                                 "Potong grid presisi sosmed",
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -202,7 +195,7 @@ fun ProjectListScreen(
                             Text(
                                 "Mulai kanvas kosong bebas",
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -250,7 +243,7 @@ fun ProjectListScreen(
                     Text(
                         "${savedProjects.size} Proyek",
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -278,12 +271,12 @@ fun ProjectListScreen(
                                 "Belum ada desain tersimpan",
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.outline
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 "Pilih salah satu template di atas untuk memulai kreasi",
                                 fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp)
                             )
@@ -460,7 +453,7 @@ fun TemplatePresetCard(
             Text(
                 preset.description,
                 fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 12.sp
@@ -487,23 +480,23 @@ fun ProjectListItemCard(
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .testTag("project_item_${project.id}"),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Ratio Icon / Thumbnail representation
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -514,33 +507,35 @@ fun ProjectListItemCard(
                         else -> Icons.Default.FilterFrames
                     },
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(24.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     project.name,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(3.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "Format ${project.aspectRatio}",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.outline
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         dateString,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -558,3 +553,4 @@ fun ProjectListItemCard(
         }
     }
 }
+

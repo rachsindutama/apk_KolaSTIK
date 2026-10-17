@@ -125,7 +125,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val activeProjectId = MutableStateFlow<Int?>(null)
     val activeProjectName = MutableStateFlow("Unsaved Collage")
     val activeAspectRatio = MutableStateFlow("1:1") // "1:1", "4:5", "16:9", "9:16", "3:4"
-    val activeBackgroundColor = MutableStateFlow(0xFFF5F5F7.toInt())
+    val activeBackgroundColor = MutableStateFlow(0xFFFFFFFF.toInt())
     
     private val _layers = MutableStateFlow<List<LayerModel>>(emptyList())
     val layers: StateFlow<List<LayerModel>> = _layers.asStateFlow()
@@ -184,7 +184,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeProjectId.value = null
             activeProjectName.value = if (preset != null) "KolaSTIK ${preset.name}" else "Untitled Collage"
             activeAspectRatio.value = preset?.defaultAspect ?: "1:1"
-            activeBackgroundColor.value = 0xFFF5F5F7.toInt()
+            activeBackgroundColor.value = 0xFFFFFFFF.toInt()
             if (preset != null) {
                 _layers.value = preset.generateLayers()
                 selectedLayerId.value = _layers.value.firstOrNull()?.id
@@ -204,7 +204,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeProjectId.value = null
             activeProjectName.value = "Custom ${safeW}x${safeH}"
             activeAspectRatio.value = "$safeW:$safeH"
-            activeBackgroundColor.value = 0xFFF5F5F7.toInt()
+            activeBackgroundColor.value = 0xFFFFFFFF.toInt()
             _layers.value = emptyList()
             selectedLayerId.value = null
             navigateTo(Screen.Editor)
@@ -307,21 +307,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Add a new blank custom layer
-    fun addLayer(imageUri: String? = null): String {
+    fun addLayer(
+        imageUri: String? = null,
+        initialWidth: Float = 0.5f,
+        initialHeight: Float = 0.5f,
+        initialX: Float = 0.25f,
+        initialY: Float = 0.25f,
+        name: String = "",
+        fitImage: Boolean = false
+    ): String {
         recordSnapshot()
         val newId = UUID.randomUUID().toString()
         val newLayer = LayerModel(
             id = newId,
-            x = 0.25f,
-            y = 0.25f,
-            width = 0.5f,
-            height = 0.5f,
+            x = initialX,
+            y = initialY,
+            width = initialWidth,
+            height = initialHeight,
             zIndex = (_layers.value.maxOfOrNull { it.zIndex } ?: 0) + 1,
             borderThickness = 0f,
             borderColor = 0xFFFFFFFF.toInt(),
             cornerRadius = 0f,
             shapeType = "rect",
-            imageUri = imageUri
+            imageUri = imageUri,
+            name = name,
+            fitImage = fitImage,
+            lockAspectRatio = true
         )
         _layers.value = _layers.value + newLayer
         selectedLayerId.value = newLayer.id

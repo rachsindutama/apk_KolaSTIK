@@ -37,7 +37,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import com.example.utils.FileUtils
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.filled.*
@@ -138,6 +140,10 @@ fun CollageEditorScreen(
     // Dynamic Alignment Guides & Snapping States
     val haptic = LocalHapticFeedback.current
     var isSnappingEnabled by remember { mutableStateOf(true) }
+    var isRatioLocked by remember { mutableStateOf(true) }
+    var showAddOptionModal by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var showPlaceholderRatioDialog by remember { mutableStateOf(false) }
     var activeGuides by remember { mutableStateOf<List<AlignmentGuide>>(emptyList()) }
     var lastTapTime by remember { mutableLongStateOf(0L) }
     var lastTapLayerId by remember { mutableStateOf<String?>(null) }
@@ -160,9 +166,44 @@ fun CollageEditorScreen(
         }
     )
 
+    // Direct Photo Picker (Add photo directly without frame)
+    val directPhotoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri ->
+            if (uri != null) {
+                val dimensions = FileUtils.getImageDimensions(context, uri.toString())
+                val imgW = dimensions?.first ?: 1000
+                val imgH = dimensions?.second ?: 1000
+                val imgRatio = (imgW.toFloat() / imgH.toFloat().coerceAtLeast(1f)).coerceAtLeast(0.1f)
+
+                val parts = activeAspect.split(":")
+                val cw = parts.getOrNull(0)?.toFloatOrNull() ?: 1f
+                val ch = parts.getOrNull(1)?.toFloatOrNull() ?: 1f
+                val canvasRatio = (cw / ch.coerceAtLeast(1f)).coerceAtLeast(0.1f)
+
+                val normalizedRatio = imgRatio / canvasRatio
+                val targetW = if (normalizedRatio >= 1f) 0.65f else (0.65f * normalizedRatio).coerceIn(0.15f, 0.9f)
+                val targetH = if (normalizedRatio >= 1f) (0.65f / normalizedRatio).coerceIn(0.15f, 0.9f) else 0.65f
+                val targetX = ((1f - targetW) / 2f).coerceIn(0f, 1f)
+                val targetY = ((1f - targetH) / 2f).coerceIn(0f, 1f)
+
+                viewModel.addLayer(
+                    imageUri = uri.toString(),
+                    initialWidth = targetW,
+                    initialHeight = targetH,
+                    initialX = targetX,
+                    initialY = targetY,
+                    name = "Foto Langsung",
+                    fitImage = true
+                )
+                Toast.makeText(context, "Foto langsung ditambahkan!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+
     // Back button behavior
     BackHandler {
-        viewModel.navigateTo(Screen.NewProject)
+        showExitDialog = true
     }
 
     Scaffold(
@@ -193,7 +234,7 @@ fun CollageEditorScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateTo(Screen.NewProject) }) {
+                    IconButton(onClick = { showExitDialog = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Kembali ke Beranda"
@@ -796,11 +837,24 @@ fun CollageEditorScreen(
                                                         Icon(
                                                             imageVector = Icons.Default.AddAPhoto,
                                                             contentDescription = "Tambah Foto",
-                                                            tint = Color.Gray,
-                                                            modifier = Modifier.size(24.dp)
+                                                            tint = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.size(26.dp)
                                                         )
                                                         Spacer(modifier = Modifier.height(4.dp))
-                                                        Text("Tambah Foto", fontSize = 10.sp, color = Color.Gray)
+                                                        Text("Tambah Foto", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                                            Spacer(modifier = Modifier.height(3.dp))
+                                                            Surface(
+                                                                shape = RoundedCornerShape(4.dp),
+                                                                color = MaterialTheme.colorScheme.primaryContainer
+                                                            ) {
+                                                                Text(
+                                                                    text = if (layer.name.isNotBlank()) layer.name else "1:1",
+                                                                    fontSize = 9.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = MaterialTheme.colorScheme.primary,
+                                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                                )
+                                                            }
                                                     }
                                                 }
                                             }
@@ -875,6 +929,45 @@ fun CollageEditorScreen(
                             }
                         }
 
+                        // Empty Canvas Hint & Quick Add Action (Shown when canvas has no layers)
+                    if (layers.isEmpty()) {
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Layers,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(44.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Kanvas Kosong",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF8C8C8C)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Ketuk Tambah untuk mulai mendesain",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF8C8C8C)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                FilledTonalButton(
+                                    onClick = { showAddOptionModal = true },
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Tambah Foto / Frame", fontSize = 12.sp)
+                                }
+                            }
+                        }
+
                         // 2. Draw Selection Bounding Box & 4 Interactive Corner Drag Handles (On Top As Siblings!)
                         val selectedLayer = layers.find { it.id == selectedId }
                         if (selectedLayer != null) {
@@ -883,7 +976,7 @@ fun CollageEditorScreen(
                             val selWidthDp = canvasWidth * selectedLayer.width
                             val selHeightDp = canvasHeight * selectedLayer.height
                             val isLocked = selectedLayer.isLocked
-                            val borderColor = if (isLocked) Color(0xFFFF9500) else Color(0xFF007AFF)
+                            val borderColor = if (isLocked) Color(0xFFFF9500) else MaterialTheme.colorScheme.primary
 
                             // Outer Bounding Border
                             Box(
@@ -896,15 +989,10 @@ fun CollageEditorScreen(
                             ) {
                                 Canvas(modifier = Modifier.fillMaxSize()) {
                                     val safeScale = canvasScale.coerceAtLeast(0.15f)
-                                    val strokeOuter = (2.2.dp / safeScale).toPx()
-                                    val strokeInner = (1.0.dp / safeScale).toPx()
+                                    val strokeWidth = (2.0.dp / safeScale).toPx()
                                     drawRect(
                                         color = borderColor,
-                                        style = Stroke(width = strokeOuter)
-                                    )
-                                    drawRect(
-                                        color = onSurfaceColor,
-                                        style = Stroke(width = strokeInner)
+                                        style = Stroke(width = strokeWidth)
                                     )
                                 }
 
@@ -1017,12 +1105,39 @@ fun CollageEditorScreen(
                                                         val rawW = (start.width - (rawX - start.x)).coerceIn(minFractionX, (1f - rawX).coerceAtLeast(minFractionX))
                                                         val rawH = (start.height - (rawY - start.y)).coerceIn(minFractionY, (1f - rawY).coerceAtLeast(minFractionY))
 
-                                                        if (isSnappingEnabled) {
+                                                        val (calcX, calcY, calcW, calcH) = if (isRatioLocked) {
+                                                            val startWPx = (start.width * canvasWidthPx).coerceAtLeast(1f)
+                                                            val startHPx = (start.height * canvasHeightPx).coerceAtLeast(1f)
+                                                            val startRatio = startWPx / startHPx
+                                                            val anchorXPx = (start.x + start.width) * canvasWidthPx
+                                                            val anchorYPx = (start.y + start.height) * canvasHeightPx
+
+                                                            val deltaScaleX = -totalDeltaX / startWPx
+                                                            val deltaScaleY = -totalDeltaY / startHPx
+                                                            val scaleFactor = (1f + if (kotlin.math.abs(totalDeltaX) > kotlin.math.abs(totalDeltaY)) deltaScaleX else deltaScaleY).coerceAtLeast(0.05f)
+
+                                                            val maxAllowedScale = minOf(anchorXPx / startWPx, anchorYPx / startHPx)
+                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / startWPx, (minFractionY * canvasHeightPx) / startHPx)
+                                                            val clampedScale = scaleFactor.coerceIn(minAllowedScale, maxAllowedScale)
+
+                                                            val lockedWPx = startWPx * clampedScale
+                                                            val lockedHPx = lockedWPx / startRatio
+
+                                                            val finalX = (anchorXPx - lockedWPx) / canvasWidthPx
+                                                            val finalY = (anchorYPx - lockedHPx) / canvasHeightPx
+                                                            val finalW = lockedWPx / canvasWidthPx
+                                                            val finalH = lockedHPx / canvasHeightPx
+                                                            listOf(finalX, finalY, finalW, finalH)
+                                                        } else {
+                                                            listOf(rawX, rawY, rawW, rawH)
+                                                        }
+
+                                                        if (isSnappingEnabled && !isRatioLocked) {
                                                             val snapResult = AlignmentGuideUtils.calculateResizeSnap(
-                                                                targetX = rawX,
-                                                                targetY = rawY,
-                                                                targetW = rawW,
-                                                                targetH = rawH,
+                                                                targetX = calcX,
+                                                                targetY = calcY,
+                                                                targetW = calcW,
+                                                                targetH = calcH,
                                                                 handleIndex = 0,
                                                                 otherLayers = latestLayers.value.filter { it.id != selectedLayer.id },
                                                                 minWidth = minFractionX,
@@ -1044,7 +1159,7 @@ fun CollageEditorScreen(
                                                             ))
                                                         } else {
                                                             activeGuides = emptyList()
-                                                            viewModel.updateLayer(start.copy(x = rawX, y = rawY, width = rawW, height = rawH))
+                                                            viewModel.updateLayer(start.copy(x = calcX, y = calcY, width = calcW, height = calcH))
                                                         }
                                                     }
                                                 }
@@ -1056,11 +1171,11 @@ fun CollageEditorScreen(
                                         modifier = Modifier
                                             .size(handleVisualSize)
                                             .shadow((2.5.dp / safeScale).coerceIn(1.dp, 4.dp), CircleShape)
-                                            .background(MaterialTheme.colorScheme.onSurface, CircleShape)
-                                            .border(handleBorderWidth, Color(0xFF007AFF), CircleShape),
+                                            .background(Color.White, CircleShape)
+                                            .border(handleBorderWidth, MaterialTheme.colorScheme.primary, CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Box(modifier = Modifier.size(handleInnerDotSize).background(Color(0xFF007AFF), CircleShape))
+                                        Box(modifier = Modifier.size(handleInnerDotSize).background(MaterialTheme.colorScheme.primary, CircleShape))
                                     }
                                 }
 
@@ -1103,12 +1218,39 @@ fun CollageEditorScreen(
                                                         val rawH = (start.height - (rawY - start.y)).coerceIn(minFractionY, (1f - rawY).coerceAtLeast(minFractionY))
                                                         val rawW = (start.width + totalDeltaX / canvasWidthPx).coerceIn(minFractionX, (1f - start.x).coerceAtLeast(minFractionX))
 
-                                                        if (isSnappingEnabled) {
+                                                        val (calcX, calcY, calcW, calcH) = if (isRatioLocked) {
+                                                            val startWPx = (start.width * canvasWidthPx).coerceAtLeast(1f)
+                                                            val startHPx = (start.height * canvasHeightPx).coerceAtLeast(1f)
+                                                            val startRatio = startWPx / startHPx
+                                                            val anchorXPx = start.x * canvasWidthPx
+                                                            val anchorYPx = (start.y + start.height) * canvasHeightPx
+
+                                                            val deltaScaleX = totalDeltaX / startWPx
+                                                            val deltaScaleY = -totalDeltaY / startHPx
+                                                            val scaleFactor = (1f + if (kotlin.math.abs(totalDeltaX) > kotlin.math.abs(totalDeltaY)) deltaScaleX else deltaScaleY).coerceAtLeast(0.05f)
+
+                                                            val maxAllowedScale = minOf((canvasWidthPx - anchorXPx) / startWPx, anchorYPx / startHPx)
+                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / startWPx, (minFractionY * canvasHeightPx) / startHPx)
+                                                            val clampedScale = scaleFactor.coerceIn(minAllowedScale, maxAllowedScale)
+
+                                                            val lockedWPx = startWPx * clampedScale
+                                                            val lockedHPx = lockedWPx / startRatio
+
+                                                            val finalX = start.x
+                                                            val finalY = (anchorYPx - lockedHPx) / canvasHeightPx
+                                                            val finalW = lockedWPx / canvasWidthPx
+                                                            val finalH = lockedHPx / canvasHeightPx
+                                                            listOf(finalX, finalY, finalW, finalH)
+                                                        } else {
+                                                            listOf(start.x, rawY, rawW, rawH)
+                                                        }
+
+                                                        if (isSnappingEnabled && !isRatioLocked) {
                                                             val snapResult = AlignmentGuideUtils.calculateResizeSnap(
-                                                                targetX = start.x,
-                                                                targetY = rawY,
-                                                                targetW = rawW,
-                                                                targetH = rawH,
+                                                                targetX = calcX,
+                                                                targetY = calcY,
+                                                                targetW = calcW,
+                                                                targetH = calcH,
                                                                 handleIndex = 1,
                                                                 otherLayers = latestLayers.value.filter { it.id != selectedLayer.id },
                                                                 minWidth = minFractionX,
@@ -1123,13 +1265,14 @@ fun CollageEditorScreen(
                                                             }
                                                             activeGuides = snapResult.guides
                                                             viewModel.updateLayer(start.copy(
+                                                                x = snapResult.x,
                                                                 y = snapResult.y,
                                                                 width = snapResult.width,
                                                                 height = snapResult.height
                                                             ))
                                                         } else {
                                                             activeGuides = emptyList()
-                                                            viewModel.updateLayer(start.copy(y = rawY, width = rawW, height = rawH))
+                                                            viewModel.updateLayer(start.copy(x = calcX, y = calcY, width = calcW, height = calcH))
                                                         }
                                                     }
                                                 }
@@ -1141,11 +1284,11 @@ fun CollageEditorScreen(
                                         modifier = Modifier
                                             .size(handleVisualSize)
                                             .shadow((2.5.dp / safeScale).coerceIn(1.dp, 4.dp), CircleShape)
-                                            .background(MaterialTheme.colorScheme.onSurface, CircleShape)
-                                            .border(handleBorderWidth, Color(0xFF007AFF), CircleShape),
+                                            .background(Color.White, CircleShape)
+                                            .border(handleBorderWidth, MaterialTheme.colorScheme.primary, CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Box(modifier = Modifier.size(handleInnerDotSize).background(Color(0xFF007AFF), CircleShape))
+                                        Box(modifier = Modifier.size(handleInnerDotSize).background(MaterialTheme.colorScheme.primary, CircleShape))
                                     }
                                 }
 
@@ -1188,12 +1331,39 @@ fun CollageEditorScreen(
                                                         val rawW = (start.width - (rawX - start.x)).coerceIn(minFractionX, (1f - rawX).coerceAtLeast(minFractionX))
                                                         val rawH = (start.height + totalDeltaY / canvasHeightPx).coerceIn(minFractionY, (1f - start.y).coerceAtLeast(minFractionY))
 
-                                                        if (isSnappingEnabled) {
+                                                        val (calcX, calcY, calcW, calcH) = if (isRatioLocked) {
+                                                            val startWPx = (start.width * canvasWidthPx).coerceAtLeast(1f)
+                                                            val startHPx = (start.height * canvasHeightPx).coerceAtLeast(1f)
+                                                            val startRatio = startWPx / startHPx
+                                                            val anchorXPx = (start.x + start.width) * canvasWidthPx
+                                                            val anchorYPx = start.y * canvasHeightPx
+
+                                                            val deltaScaleX = -totalDeltaX / startWPx
+                                                            val deltaScaleY = totalDeltaY / startHPx
+                                                            val scaleFactor = (1f + if (kotlin.math.abs(totalDeltaX) > kotlin.math.abs(totalDeltaY)) deltaScaleX else deltaScaleY).coerceAtLeast(0.05f)
+
+                                                            val maxAllowedScale = minOf(anchorXPx / startWPx, (canvasHeightPx - anchorYPx) / startHPx)
+                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / startWPx, (minFractionY * canvasHeightPx) / startHPx)
+                                                            val clampedScale = scaleFactor.coerceIn(minAllowedScale, maxAllowedScale)
+
+                                                            val lockedWPx = startWPx * clampedScale
+                                                            val lockedHPx = lockedWPx / startRatio
+
+                                                            val finalX = (anchorXPx - lockedWPx) / canvasWidthPx
+                                                            val finalY = start.y
+                                                            val finalW = lockedWPx / canvasWidthPx
+                                                            val finalH = lockedHPx / canvasHeightPx
+                                                            listOf(finalX, finalY, finalW, finalH)
+                                                        } else {
+                                                            listOf(rawX, start.y, rawW, rawH)
+                                                        }
+
+                                                        if (isSnappingEnabled && !isRatioLocked) {
                                                             val snapResult = AlignmentGuideUtils.calculateResizeSnap(
-                                                                targetX = rawX,
-                                                                targetY = start.y,
-                                                                targetW = rawW,
-                                                                targetH = rawH,
+                                                                targetX = calcX,
+                                                                targetY = calcY,
+                                                                targetW = calcW,
+                                                                targetH = calcH,
                                                                 handleIndex = 2,
                                                                 otherLayers = latestLayers.value.filter { it.id != selectedLayer.id },
                                                                 minWidth = minFractionX,
@@ -1209,12 +1379,13 @@ fun CollageEditorScreen(
                                                             activeGuides = snapResult.guides
                                                             viewModel.updateLayer(start.copy(
                                                                 x = snapResult.x,
+                                                                y = snapResult.y,
                                                                 width = snapResult.width,
                                                                 height = snapResult.height
                                                             ))
                                                         } else {
                                                             activeGuides = emptyList()
-                                                            viewModel.updateLayer(start.copy(x = rawX, width = rawW, height = rawH))
+                                                            viewModel.updateLayer(start.copy(x = calcX, y = calcY, width = calcW, height = calcH))
                                                         }
                                                     }
                                                 }
@@ -1226,11 +1397,11 @@ fun CollageEditorScreen(
                                         modifier = Modifier
                                             .size(handleVisualSize)
                                             .shadow((2.5.dp / safeScale).coerceIn(1.dp, 4.dp), CircleShape)
-                                            .background(MaterialTheme.colorScheme.onSurface, CircleShape)
-                                            .border(handleBorderWidth, Color(0xFF007AFF), CircleShape),
+                                            .background(Color.White, CircleShape)
+                                            .border(handleBorderWidth, MaterialTheme.colorScheme.primary, CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Box(modifier = Modifier.size(handleInnerDotSize).background(Color(0xFF007AFF), CircleShape))
+                                        Box(modifier = Modifier.size(handleInnerDotSize).background(MaterialTheme.colorScheme.primary, CircleShape))
                                     }
                                 }
 
@@ -1271,12 +1442,39 @@ fun CollageEditorScreen(
                                                         val rawW = (start.width + totalDeltaX / canvasWidthPx).coerceIn(minFractionX, (1f - start.x).coerceAtLeast(minFractionX))
                                                         val rawH = (start.height + totalDeltaY / canvasHeightPx).coerceIn(minFractionY, (1f - start.y).coerceAtLeast(minFractionY))
 
-                                                        if (isSnappingEnabled) {
+                                                        val (calcX, calcY, calcW, calcH) = if (isRatioLocked) {
+                                                            val startWPx = (start.width * canvasWidthPx).coerceAtLeast(1f)
+                                                            val startHPx = (start.height * canvasHeightPx).coerceAtLeast(1f)
+                                                            val startRatio = startWPx / startHPx
+                                                            val anchorXPx = start.x * canvasWidthPx
+                                                            val anchorYPx = start.y * canvasHeightPx
+
+                                                            val deltaScaleX = totalDeltaX / startWPx
+                                                            val deltaScaleY = totalDeltaY / startHPx
+                                                            val scaleFactor = (1f + if (kotlin.math.abs(totalDeltaX) > kotlin.math.abs(totalDeltaY)) deltaScaleX else deltaScaleY).coerceAtLeast(0.05f)
+
+                                                            val maxAllowedScale = minOf((canvasWidthPx - anchorXPx) / startWPx, (canvasHeightPx - anchorYPx) / startHPx)
+                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / startWPx, (minFractionY * canvasHeightPx) / startHPx)
+                                                            val clampedScale = scaleFactor.coerceIn(minAllowedScale, maxAllowedScale)
+
+                                                            val lockedWPx = startWPx * clampedScale
+                                                            val lockedHPx = lockedWPx / startRatio
+
+                                                            val finalX = start.x
+                                                            val finalY = start.y
+                                                            val finalW = lockedWPx / canvasWidthPx
+                                                            val finalH = lockedHPx / canvasHeightPx
+                                                            listOf(finalX, finalY, finalW, finalH)
+                                                        } else {
+                                                            listOf(start.x, start.y, rawW, rawH)
+                                                        }
+
+                                                        if (isSnappingEnabled && !isRatioLocked) {
                                                             val snapResult = AlignmentGuideUtils.calculateResizeSnap(
-                                                                targetX = start.x,
-                                                                targetY = start.y,
-                                                                targetW = rawW,
-                                                                targetH = rawH,
+                                                                targetX = calcX,
+                                                                targetY = calcY,
+                                                                targetW = calcW,
+                                                                targetH = calcH,
                                                                 handleIndex = 3,
                                                                 otherLayers = latestLayers.value.filter { it.id != selectedLayer.id },
                                                                 minWidth = minFractionX,
@@ -1291,12 +1489,14 @@ fun CollageEditorScreen(
                                                             }
                                                             activeGuides = snapResult.guides
                                                             viewModel.updateLayer(start.copy(
+                                                                x = snapResult.x,
+                                                                y = snapResult.y,
                                                                 width = snapResult.width,
                                                                 height = snapResult.height
                                                             ))
                                                         } else {
                                                             activeGuides = emptyList()
-                                                            viewModel.updateLayer(start.copy(width = rawW, height = rawH))
+                                                            viewModel.updateLayer(start.copy(x = calcX, y = calcY, width = calcW, height = calcH))
                                                         }
                                                     }
                                                 }
@@ -1308,11 +1508,11 @@ fun CollageEditorScreen(
                                         modifier = Modifier
                                             .size(handleVisualSize)
                                             .shadow((2.5.dp / safeScale).coerceIn(1.dp, 4.dp), CircleShape)
-                                            .background(MaterialTheme.colorScheme.onSurface, CircleShape)
-                                            .border(handleBorderWidth, Color(0xFF007AFF), CircleShape),
+                                            .background(Color.White, CircleShape)
+                                            .border(handleBorderWidth, MaterialTheme.colorScheme.primary, CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Box(modifier = Modifier.size(handleInnerDotSize).background(Color(0xFF007AFF), CircleShape))
+                                        Box(modifier = Modifier.size(handleInnerDotSize).background(MaterialTheme.colorScheme.primary, CircleShape))
                                     }
                                 }
                             }
@@ -1334,6 +1534,53 @@ fun CollageEditorScreen(
                             canvasScale = canvasScale,
                             modifier = Modifier.fillMaxSize()
                         )
+                    }
+                }
+
+                // Floating Layers Button on Canvas (Moved from bottom toolbar into canvas)
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(8.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    tonalElevation = 6.dp,
+                    shadowElevation = 6.dp
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clickable {
+                                contextMenuLayerId = selectedId
+                                showLayerContextMenu = true
+                            }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .testTag("canvas_floating_layers_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Layers,
+                            contentDescription = "Buka Menu Lapisan",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Lapisan",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = onSurfaceColor
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ) {
+                            Text(
+                                text = "${layers.size}",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
 
@@ -1425,7 +1672,37 @@ fun CollageEditorScreen(
                             )
                         }
 
-                        // Removed Tiled Inspector
+                        // Divider before Lock Aspect Ratio Toggle
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .width(1.dp)
+                                .height(16.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        )
+
+                        // Lock Aspect Ratio Toggle
+                        IconButton(
+                            onClick = {
+                                isRatioLocked = !isRatioLocked
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                Toast.makeText(
+                                    context,
+                                    if (isRatioLocked) "Kunci Rasio: Aktif (Proporsional)" else "Kunci Rasio: Bebas",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .testTag("toggle_lock_aspect_ratio")
+                        ) {
+                            Icon(
+                                imageVector = if (isRatioLocked) Icons.Default.Lock else Icons.Default.LockOpen,
+                                contentDescription = "Toggle Kunci Rasio Aspek",
+                                tint = if (isRatioLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1461,7 +1738,7 @@ fun CollageEditorScreen(
                             BottomActionItem(
                                 icon = Icons.Default.AddBox,
                                 label = "Tambah",
-                                onClick = { viewModel.addLayer() }
+                                onClick = { showAddOptionModal = true }
                             )
 
                             if (selectedLayer != null) {
@@ -1513,25 +1790,14 @@ fun CollageEditorScreen(
                                 )
                             }
 
-                            // 8. Layer Selector & Context Manager (Always available)
-                            BottomActionItem(
-                                icon = Icons.Default.Layers,
-                                label = "Lapisan",
-                                color = MaterialTheme.colorScheme.primary,
-                                onClick = {
-                                    contextMenuLayerId = selectedId
-                                    showLayerContextMenu = true
-                                }
-                            )
-
-                            // 9. Canvas Sizing, Custom Dimensions, Background Colors (Always available)
+                            // 8. Canvas Sizing, Custom Dimensions, Background Colors (Always available)
                             BottomActionItem(
                                 icon = Icons.Default.Palette,
                                 label = "Kanvas",
                                 onClick = { activeTool = "canvas" }
                             )
 
-                            // 10. Cloud template saving (Always available)
+                            // 9. Cloud template saving (Always available)
                             BottomActionItem(
                                 icon = Icons.Default.CloudSync,
                                 label = "Cloud",
@@ -1539,34 +1805,16 @@ fun CollageEditorScreen(
                             )
 
                             if (selectedLayer != null) {
-                                // 11. Lock / Unlock Layer
-                                BottomActionItem(
-                                    icon = if (selectedLayer.isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
-                                    label = if (selectedLayer.isLocked) "Buka Kunci" else "Kunci",
-                                    color = if (selectedLayer.isLocked) Color(0xFFFF9500) else MaterialTheme.colorScheme.onSurface,
-                                    onClick = {
-                                        viewModel.toggleLockLayer(selectedLayer.id)
-                                        Toast.makeText(
-                                            context,
-                                            if (selectedLayer.isLocked) "Kunci dibuka!" else "Lapisan dikunci!",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                )
-
-                                // 12. Duplicate
-                                BottomActionItem(
-                                    icon = Icons.Default.ContentCopy,
-                                    label = "Duplikat",
-                                    onClick = { viewModel.duplicateLayer(selectedLayer) }
-                                )
-
-                                // 13. Delete
+                                // 10. Delete
                                 BottomActionItem(
                                     icon = Icons.Default.Delete,
                                     label = "Hapus",
                                     color = MaterialTheme.colorScheme.error,
-                                    onClick = { viewModel.removeLayer(selectedLayer.id) }
+                                    onClick = {
+                                        viewModel.removeLayer(selectedLayer.id)
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        Toast.makeText(context, "Lapisan dihapus!", Toast.LENGTH_SHORT).show()
+                                    }
                                 )
                             }
                         }
@@ -2247,6 +2495,11 @@ fun CollageEditorScreen(
                                                             },
                                                             onValueChangeFinished = { isSliderInteracting = false },
                                                             valueRange = 0f..40f,
+                                                            colors = SliderDefaults.colors(
+                                                                thumbColor = MaterialTheme.colorScheme.primary,
+                                                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                                inactiveTrackColor = MaterialTheme.colorScheme.outline
+                                                            ),
                                                             modifier = Modifier.height(22.dp)
                                                         )
 
@@ -2266,6 +2519,11 @@ fun CollageEditorScreen(
                                                             },
                                                             onValueChangeFinished = { isSliderInteracting = false },
                                                             valueRange = -30f..30f,
+                                                            colors = SliderDefaults.colors(
+                                                                thumbColor = MaterialTheme.colorScheme.primary,
+                                                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                                inactiveTrackColor = MaterialTheme.colorScheme.outline
+                                                            ),
                                                             modifier = Modifier.height(22.dp)
                                                         )
 
@@ -2285,6 +2543,11 @@ fun CollageEditorScreen(
                                                             },
                                                             onValueChangeFinished = { isSliderInteracting = false },
                                                             valueRange = -30f..30f,
+                                                            colors = SliderDefaults.colors(
+                                                                thumbColor = MaterialTheme.colorScheme.primary,
+                                                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                                inactiveTrackColor = MaterialTheme.colorScheme.outline
+                                                            ),
                                                             modifier = Modifier.height(22.dp)
                                                         )
 
@@ -2362,6 +2625,11 @@ fun CollageEditorScreen(
                                                             },
                                                             onValueChangeFinished = { isSliderInteracting = false },
                                                             valueRange = 1f..30f,
+                                                            colors = SliderDefaults.colors(
+                                                                thumbColor = MaterialTheme.colorScheme.primary,
+                                                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                                inactiveTrackColor = MaterialTheme.colorScheme.outline
+                                                            ),
                                                             modifier = Modifier.height(22.dp)
                                                         )
 
@@ -2381,6 +2649,11 @@ fun CollageEditorScreen(
                                                             },
                                                             onValueChangeFinished = { isSliderInteracting = false },
                                                             valueRange = -20f..20f,
+                                                            colors = SliderDefaults.colors(
+                                                                thumbColor = MaterialTheme.colorScheme.primary,
+                                                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                                inactiveTrackColor = MaterialTheme.colorScheme.outline
+                                                            ),
                                                             modifier = Modifier.height(22.dp)
                                                         )
 
@@ -2400,6 +2673,11 @@ fun CollageEditorScreen(
                                                             },
                                                             onValueChangeFinished = { isSliderInteracting = false },
                                                             valueRange = -20f..20f,
+                                                            colors = SliderDefaults.colors(
+                                                                thumbColor = MaterialTheme.colorScheme.primary,
+                                                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                                inactiveTrackColor = MaterialTheme.colorScheme.outline
+                                                            ),
                                                             modifier = Modifier.height(22.dp)
                                                         )
 
@@ -2475,6 +2753,11 @@ fun CollageEditorScreen(
                                                             },
                                                             onValueChangeFinished = { isSliderInteracting = false },
                                                             valueRange = 2f..50f,
+                                                            colors = SliderDefaults.colors(
+                                                                thumbColor = MaterialTheme.colorScheme.primary,
+                                                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                                inactiveTrackColor = MaterialTheme.colorScheme.outline
+                                                            ),
                                                             modifier = Modifier.height(22.dp)
                                                         )
 
@@ -2899,94 +3182,156 @@ fun CollageEditorScreen(
                 }
             },
             text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Text(
-                        "Pilih format dan resolusi ekspor profesional. Aplikasi akan merender elemen langsung ke kanvas kualitas asli tanpa pecah.",
+                        "Pilih format dan resolusi ekspor profesional. Gambar akan dirender langsung dengan kualitas terbaik.",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    // Format JPG/PNG selector
+                    // Format JPG/PNG Segmented Selector
                     Text("Format File", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedCard(
+                        Surface(
                             onClick = { exportFormat = Bitmap.CompressFormat.JPEG },
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.outlinedCardColors(
-                                containerColor = if (exportFormat == Bitmap.CompressFormat.JPEG) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-                            )
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (exportFormat == Bitmap.CompressFormat.JPEG) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            border = BorderStroke(
+                                1.dp,
+                                if (exportFormat == Bitmap.CompressFormat.JPEG) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Box(modifier = Modifier.padding(10.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text("JPG (Kecil & Efisien)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "JPG",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = if (exportFormat == Bitmap.CompressFormat.JPEG) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    "Kecil & Efisien",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
 
-                        OutlinedCard(
+                        Surface(
                             onClick = { exportFormat = Bitmap.CompressFormat.PNG },
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.outlinedCardColors(
-                                containerColor = if (exportFormat == Bitmap.CompressFormat.PNG) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-                            )
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (exportFormat == Bitmap.CompressFormat.PNG) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            border = BorderStroke(
+                                1.dp,
+                                if (exportFormat == Bitmap.CompressFormat.PNG) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Box(modifier = Modifier.padding(10.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text("PNG (Detail Sempurna)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "PNG",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = if (exportFormat == Bitmap.CompressFormat.PNG) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    "Detail Sempurna",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Width Selection presets & slider
                     val isTiledModeRecommended = exportWidth >= 5000f
                     val resolutionText = remember(exportWidth) {
                         val w = exportWidth.toInt()
                         when {
-                            w < 2000 -> "1080px (Media Sosial HD)"
-                            w < 4000 -> "3000px (Cetak Sedang / Web)"
-                            w < 8000 -> "6000px (4K Print / Poster)"
-                            else -> "${w}px (Ultra-High Res 13500px Max)"
+                            w < 2000 -> "1080px (Sosmed HD)"
+                            w < 4000 -> "3000px (Cetak Sedang)"
+                            w < 8000 -> "6000px (Poster 4K)"
+                            else -> "${w}px (Ultra Max)"
                         }
                     }
 
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Text("Resolusi Ekspor (Lebar)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Text(resolutionText, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Resolusi Lebar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                resolutionText,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
 
                     Slider(
                         value = exportWidth,
                         onValueChange = { exportWidth = it },
                         valueRange = 1080f..13500f,
-                        modifier = Modifier.testTag("export_resolution_slider")
+                        modifier = Modifier.fillMaxWidth().testTag("export_resolution_slider")
                     )
 
-                    // Presets quick click
-                    Row(
+                    // Presets quick click (Scrollable LazyRow preventing overflow)
+                    LazyRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        listOf(1080f to "1080px", 3000f to "3000px", 6000f to "6000px", 10800f to "10800px", 13500f to "13500px").forEach { (v, name) ->
-                            InputChip(
-                                selected = exportWidth.toInt() == v.toInt(),
+                        val presets = listOf(
+                            1080f to "1080px",
+                            3000f to "3000px",
+                            6000f to "6000px",
+                            10800f to "10800px",
+                            13500f to "13500px Max"
+                        )
+                        items(presets) { (v, name) ->
+                            val isSelected = exportWidth.toInt() == v.toInt()
+                            FilterChip(
+                                selected = isSelected,
                                 onClick = { exportWidth = v },
-                                label = { Text(name, fontSize = 10.sp) }
+                                label = { Text(name, fontSize = 11.sp) },
+                                leadingIcon = if (isSelected) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                } else null
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Tiled Rendering Engine Mode & Banner Grid Option
+                    // Tiled Rendering Engine Mode Card
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2998,49 +3343,87 @@ fun CollageEditorScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (isTiledModeRecommended) "Tiled Rendering Engine (Anti-OOM Aktif)" else "Mode Render Ekspor",
+                                    text = if (isTiledModeRecommended) "Tiled Engine (Anti-OOM Aktif)" else "Mode Render Ekspor",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
                             Text(
-                                text = "Membagi kanvas menjadi tile 2048px untuk mencegah crash dan menjaga memori tetap ringan pada resolusi masif.",
+                                text = "Membagi kanvas menjadi tile 2048px untuk performa ringan bebas crash.",
                                 fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 2.dp)
+                                modifier = Modifier.padding(top = 2.dp, bottom = 6.dp)
                             )
-                            
+
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                FilterChip(
-                                    selected = tiledExportMode == TiledExportMode.SINGLE_MASTER,
+                                Surface(
                                     onClick = { tiledExportMode = TiledExportMode.SINGLE_MASTER },
-                                    label = { Text("1 File Master Utuh", fontSize = 10.sp) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (tiledExportMode == TiledExportMode.SINGLE_MASTER) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (tiledExportMode == TiledExportMode.SINGLE_MASTER) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                    ),
                                     modifier = Modifier.weight(1f)
-                                )
-                                FilterChip(
-                                    selected = tiledExportMode == TiledExportMode.MULTI_PANEL_GRID,
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "1 File Master",
+                                            fontSize = 11.sp,
+                                            fontWeight = if (tiledExportMode == TiledExportMode.SINGLE_MASTER) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (tiledExportMode == TiledExportMode.SINGLE_MASTER) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                Surface(
                                     onClick = { tiledExportMode = TiledExportMode.MULTI_PANEL_GRID },
-                                    label = { Text("Grid Panel Cetak Banner", fontSize = 10.sp) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                    ),
                                     modifier = Modifier.weight(1f)
-                                )
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "Grid Panel Banner",
+                                            fontSize = 11.sp,
+                                            fontWeight = if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
 
                     if (exportFormat == Bitmap.CompressFormat.JPEG) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text("Kualitas JPG", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Text("${exportQuality.toInt()}%", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Kualitas Kompresi JPG", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("${exportQuality.toInt()}%", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                         }
                         Slider(
                             value = exportQuality,
                             onValueChange = { exportQuality = it },
-                            valueRange = 50f..100f
+                            valueRange = 50f..100f,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -3228,8 +3611,8 @@ fun CollageEditorScreen(
                                             val isCurrent = tileIdx == tp.currentTile
 
                                             val tileColor = when {
-                                                isDone -> Color(0xFF34C759) // Green completed
-                                                isCurrent -> Color(0xFF007AFF) // Blue active rendering
+                                                isDone -> Color(0xFF34C759) // Keep green completed
+                                                isCurrent -> MaterialTheme.colorScheme.primary // Blue active rendering
                                                 else -> Color.LightGray.copy(alpha = 0.5f)
                                             }
 
@@ -3305,13 +3688,13 @@ fun CollageEditorScreen(
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
-                                .background(Color(0xFF007AFF), RoundedCornerShape(6.dp)),
+                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Layers,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface,
+                                tint = Color.White,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -3379,7 +3762,7 @@ fun CollageEditorScreen(
                             Surface(
                                 shape = RoundedCornerShape(4.dp),
                                 color = MaterialTheme.colorScheme.surface,
-                                border = BorderStroke(1.dp, Color(0xFF3A3F47))
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                             ) {
                                 Text(
                                     text = "Normal",
@@ -3428,8 +3811,8 @@ fun CollageEditorScreen(
 
                 // Layer List
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -3449,7 +3832,7 @@ fun CollageEditorScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(
-                                        if (isSelected) Color(0xFF2B3A4E) else Color.Transparent
+                                        if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f) else Color.Transparent
                                     )
                                     .clickable {
                                         viewModel.selectedLayerId.value = layerItem.id
@@ -3462,10 +3845,10 @@ fun CollageEditorScreen(
                                 // Left Selection Accent Bar
                                 Box(
                                     modifier = Modifier
-                                        .width(3.dp)
+                                        .width(3.5.dp)
                                         .height(36.dp)
                                         .background(
-                                            if (isSelected) Color(0xFF007AFF) else Color.Transparent,
+                                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                                             RoundedCornerShape(2.dp)
                                         )
                                 )
@@ -3483,7 +3866,7 @@ fun CollageEditorScreen(
                                     Icon(
                                         imageVector = if (layerItem.isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                         contentDescription = if (layerItem.isVisible) "Sembunyikan" else "Tampilkan",
-                                        tint = if (layerItem.isVisible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (layerItem.isVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                                         modifier = Modifier.size(17.dp)
                                     )
                                 }
@@ -3499,7 +3882,7 @@ fun CollageEditorScreen(
                                     Icon(
                                         imageVector = if (layerItem.isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
                                         contentDescription = if (layerItem.isLocked) "Buka Kunci" else "Kunci",
-                                        tint = if (layerItem.isLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (layerItem.isLocked) Color(0xFFFF9500) else MaterialTheme.colorScheme.outline,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -3510,9 +3893,9 @@ fun CollageEditorScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(38.dp)
-                                        .clip(RoundedCornerShape(4.dp))
+                                        .clip(RoundedCornerShape(6.dp))
                                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp)),
+                                        .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (layerItem.imageUri != null) {
@@ -3532,7 +3915,7 @@ fun CollageEditorScreen(
                                                 else -> Icons.Default.Square
                                             },
                                             contentDescription = null,
-                                            tint = if (layerItem.isVisible) Color(0xFF9CA3AF) else Color(0xFF4B5563),
+                                            tint = if (layerItem.isVisible) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -3545,7 +3928,7 @@ fun CollageEditorScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             text = layerItem.name.ifEmpty { "Layer $layerNumber" },
-                                            color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color(0xFFD1D5DB),
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                             fontSize = 12.sp,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                         )
@@ -3557,7 +3940,7 @@ fun CollageEditorScreen(
                                             ) {
                                                 Text(
                                                     text = "fx",
-                                                    color = Color(0xFFFBBF24),
+                                                    color = Color(0xFFF59E0B),
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp)
@@ -3580,7 +3963,7 @@ fun CollageEditorScreen(
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
                                             text = "• Z: ${layerItem.zIndex}",
-                                            color = Color(0xFF6B7280),
+                                            color = MaterialTheme.colorScheme.outline,
                                             fontSize = 9.sp
                                         )
                                     }
@@ -3598,7 +3981,7 @@ fun CollageEditorScreen(
                                         Icon(
                                             imageVector = Icons.Default.KeyboardArrowUp,
                                             contentDescription = "Maju 1",
-                                            tint = Color(0xFF9CA3AF),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
@@ -3613,14 +3996,14 @@ fun CollageEditorScreen(
                                         Icon(
                                             imageVector = Icons.Default.KeyboardArrowDown,
                                             contentDescription = "Mundur 1",
-                                            tint = Color(0xFF9CA3AF),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
                                 }
                             }
 
-                            HorizontalDivider(color = Color(0xFF2E323A), thickness = 0.5.dp)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
                         }
 
                         // Background Layer (Kanvas) - Classic Photoshop Bottom Background
@@ -3631,13 +4014,13 @@ fun CollageEditorScreen(
                                     .padding(horizontal = 8.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(modifier = Modifier.width(3.dp).height(36.dp))
+                                Box(modifier = Modifier.width(3.5.dp).height(36.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
 
                                 Icon(
                                     imageVector = Icons.Default.Visibility,
                                     contentDescription = null,
-                                    tint = Color(0xFF6B7280),
+                                    tint = MaterialTheme.colorScheme.outline,
                                     modifier = Modifier
                                         .size(28.dp)
                                         .padding(4.dp)
@@ -3646,7 +4029,7 @@ fun CollageEditorScreen(
                                 Icon(
                                     imageVector = Icons.Default.Lock,
                                     contentDescription = "Terkunci",
-                                    tint = Color(0xFF6B7280),
+                                    tint = MaterialTheme.colorScheme.outline,
                                     modifier = Modifier
                                         .size(28.dp)
                                         .padding(5.dp)
@@ -3657,9 +4040,9 @@ fun CollageEditorScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(38.dp)
-                                        .clip(RoundedCornerShape(4.dp))
+                                        .clip(RoundedCornerShape(6.dp))
                                         .background(Color(activeBgColor))
-                                        .border(1.dp, Color(0xFF3F444E), RoundedCornerShape(4.dp))
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
                                 )
 
                                 Spacer(modifier = Modifier.width(10.dp))
@@ -3667,13 +4050,13 @@ fun CollageEditorScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = "Background (Kanvas)",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium
                                     )
                                     Text(
                                         text = "Dimensi: $activeAspect",
-                                        color = Color(0xFF6B7280),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 10.sp
                                     )
                                 }
@@ -3684,10 +4067,10 @@ fun CollageEditorScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // 4. Photoshop Bottom Action Bar (Iconic Footer Toolbar)
+                // 4. Layer Actions Toolbar
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -3701,14 +4084,13 @@ fun CollageEditorScreen(
                         // 1. Add New Layer (+)
                         IconButton(
                             onClick = {
-                                viewModel.addLayer()
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                Toast.makeText(context, "Lapisan baru ditambahkan!", Toast.LENGTH_SHORT).show()
+                                showLayerContextMenu = false
+                                showAddOptionModal = true
                             },
                             modifier = Modifier.size(40.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.AddBox, contentDescription = "Tambah Layer", tint = Color(0xFF60A5FA), modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.AddBox, contentDescription = "Tambah Layer", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                 Text("+ Layer", fontSize = 8.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -3723,8 +4105,18 @@ fun CollageEditorScreen(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.AutoAwesome, contentDescription = "Layer Styles", tint = Color(0xFFFBBF24), modifier = Modifier.size(18.dp))
-                                Text("FX Style", fontSize = 8.sp, color = Color(0xFFFBBF24), fontWeight = FontWeight.Bold)
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = "Layer Styles",
+                                    tint = if (targetLayer != null) Color(0xFFF59E0B) else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    "FX Style",
+                                    fontSize = 8.sp,
+                                    color = if (targetLayer != null) Color(0xFFF59E0B) else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
 
@@ -3741,8 +4133,17 @@ fun CollageEditorScreen(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.ContentCopy, contentDescription = "Duplikat", tint = Color(0xFFD1D5DB), modifier = Modifier.size(18.dp))
-                                Text("Duplikat", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = "Duplikat",
+                                    tint = if (targetLayer != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    "Duplikat",
+                                    fontSize = 8.sp,
+                                    color = if (targetLayer != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                                )
                             }
                         }
 
@@ -3759,8 +4160,17 @@ fun CollageEditorScreen(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.FilterCenterFocus, contentDescription = "Pusatkan", tint = Color(0xFFD1D5DB), modifier = Modifier.size(18.dp))
-                                Text("Pusat", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Icon(
+                                    Icons.Default.FilterCenterFocus,
+                                    contentDescription = "Pusatkan",
+                                    tint = if (targetLayer != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    "Pusat",
+                                    fontSize = 8.sp,
+                                    color = if (targetLayer != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                                )
                             }
                         }
 
@@ -3776,32 +4186,348 @@ fun CollageEditorScreen(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.AddPhotoAlternate, contentDescription = "Ganti Foto", tint = Color(0xFFD1D5DB), modifier = Modifier.size(18.dp))
-                                Text("Foto", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Icon(
+                                    Icons.Default.AddPhotoAlternate,
+                                    contentDescription = "Ganti Foto",
+                                    tint = if (targetLayer != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    "Foto",
+                                    fontSize = 8.sp,
+                                    color = if (targetLayer != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                                )
                             }
                         }
 
                         // 6. Delete Layer (🗑)
                         IconButton(
                             onClick = {
-                                if (targetLayer != null) {
-                                    viewModel.removeLayer(targetLayer.id)
+                                val layerToDelete = targetLayer ?: layers.find { it.id == selectedId } ?: layers.firstOrNull()
+                                if (layerToDelete != null) {
+                                    viewModel.removeLayer(layerToDelete.id)
+                                    contextMenuLayerId = viewModel.selectedLayerId.value
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     Toast.makeText(context, "Lapisan dihapus!", Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            enabled = targetLayer != null && layers.size > 1,
-                            modifier = Modifier.size(40.dp)
+                            enabled = layers.isNotEmpty(),
+                            modifier = Modifier.size(40.dp).testTag("layer_panel_delete_button")
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
-                                Text("Hapus", fontSize = 8.sp, color = Color(0xFFEF4444))
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Hapus",
+                                    tint = if (layers.isNotEmpty()) Color(0xFFEF4444) else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    "Hapus",
+                                    fontSize = 8.sp,
+                                    color = if (layers.isNotEmpty()) Color(0xFFEF4444) else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                                )
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    // Modal Pilihan Tambah: Frame Kotak vs Foto Langsung
+    if (showAddOptionModal) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddOptionModal = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .navigationBarsPadding()
+            ) {
+                Text(
+                    text = "Tambah ke Kanvas",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Pilih jenis elemen yang ingin Anda tambahkan",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Option 1: Frame Kotak (Placeholder)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showAddOptionModal = false
+                            showPlaceholderRatioDialog = true
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.AddBox,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Frame Kotak (Placeholder)",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Tambahkan bingkai kosong untuk mengatur tata letak kolase",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Option 2: Foto Langsung (Tanpa Frame)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showAddOptionModal = false
+                            directPhotoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.AddPhotoAlternate,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Foto Langsung",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                ) {
+                                    Text(
+                                        text = "Tanpa Frame",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Langsung pilih foto dari galeri tanpa bingkai, rasio asli terjaga",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+
+    // Placeholder Social Media Ratio Selection Dialog
+    if (showPlaceholderRatioDialog) {
+        ModalBottomSheet(
+            onDismissRequest = { showPlaceholderRatioDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .navigationBarsPadding()
+            ) {
+                Text(
+                    text = "Pilih Rasio Placeholder Sosmed",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Tentukan rasio aspek yang akan dipakai pada placeholder",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val ratios = listOf(
+                    Triple("Instagram Square (1:1)", 0.6f to 0.6f, "1:1"),
+                    Triple("Instagram Portrait (4:5)", 0.55f to 0.68f, "4:5"),
+                    Triple("Instagram Story / Reels (9:16)", 0.45f to 0.8f, "9:16"),
+                    Triple("YouTube / Twitter Landscape (16:9)", 0.7f to 0.39f, "16:9"),
+                    Triple("Portrait A4 (3:4)", 0.55f to 0.73f, "3:4")
+                )
+
+                ratios.forEach { (title, sizePair, ratioCode) ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable {
+                                showPlaceholderRatioDialog = false
+                                viewModel.addLayer(
+                                    initialWidth = sizePair.first,
+                                    initialHeight = sizePair.second,
+                                    initialX = 0.2f,
+                                    initialY = 0.2f,
+                                    name = "Placeholder ($ratioCode)"
+                                )
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                Toast.makeText(context, "Placeholder $ratioCode ditambahkan!", Toast.LENGTH_SHORT).show()
+                            },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.AspectRatio,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Rasio Aspek: $ratioCode", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+
+    // Exit Confirmation Dialog
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Keluar Editor") },
+            text = { Text("Apakah Anda ingin menyimpan perubahan kolase ini sebelum keluar?") },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = {
+                        showExitDialog = false
+                        viewModel.navigateTo(Screen.NewProject)
+                    }) {
+                        Text("Keluar", color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Button(onClick = {
+                        viewModel.saveProject {
+                            showExitDialog = false
+                            Toast.makeText(context, "Proyek disimpan!", Toast.LENGTH_SHORT).show()
+                            viewModel.navigateTo(Screen.NewProject)
+                        }
+                    }) {
+                        Text("Save")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 
