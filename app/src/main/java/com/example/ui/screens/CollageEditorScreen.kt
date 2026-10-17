@@ -13,6 +13,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -25,6 +29,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -374,6 +379,7 @@ fun CollageEditorScreen(
                         .background(Color(activeBgColor))
                 ) {
                     val latestLayers = rememberUpdatedState(layers)
+                    val layerAnimJobs = remember { mutableMapOf<String, kotlinx.coroutines.Job>() }
 
                     // Single Canvas Coordinate Resolver
                     BoxWithConstraints(
@@ -422,20 +428,26 @@ fun CollageEditorScreen(
                                             }
                                         }
                                     }
-                                    // Unified touch gestures: Drag to move, Two-finger pinch to zoom, Tap to select, Double-tap to reset, Long-press for menu
-                                    .pointerInput(layer.id, canvasScale, canvasWidthPx, canvasHeightPx) {
+                                    // Unified touch gestures: Drag to move, Two-finger pinch to zoom, Tap to select, Double-tap to reset
+                                    .pointerInput(layer.id, canvasWidthPx, canvasHeightPx) {
                                         awaitPointerEventScope {
                                             while (true) {
                                                 val down = awaitFirstDown(requireUnconsumed = false)
+                                                down.consume()
+                                                layerAnimJobs[layer.id]?.cancel()
                                                 val startLayer = latestLayers.value.find { it.id == layer.id } ?: layer
-                                                val downCanvasX = startLayer.x * canvasWidthPx + down.position.x
-                                                val downCanvasY = startLayer.y * canvasHeightPx + down.position.y
-                                                val downTime = System.currentTimeMillis()
+                                                val touchStartInLayer = down.position
+                                                val startTouchCanvasX = (startLayer.x * canvasWidthPx) + touchStartInLayer.x
+                                                val startTouchCanvasY = (startLayer.y * canvasHeightPx) + touchStartInLayer.y
+                                                val velocityTracker = VelocityTracker()
+                                                velocityTracker.addPosition(down.uptimeMillis, Offset(startTouchCanvasX, startTouchCanvasY))
                                                 var isDragging = false
                                                 var isPinching = false
                                                 var recordedSnapshot = false
                                                 var prevSpan = -1f
                                                 var prevCenter = Offset.Zero
+                                                var lastDraggedX = startLayer.x
+                                                var lastDraggedY = startLayer.y
 
                                                 // Immediately select this layer so the selection boundary appears
                                                 if (viewModel.selectedLayerId.value != layer.id) {
@@ -448,122 +460,210 @@ fun CollageEditorScreen(
                                                     val currentLayer = latestLayers.value.find { it.id == layer.id } ?: startLayer
 
                                                     if (pressedPointers.size >= 2) {
-                                                        isPinching = true
-                                                        val p1 = pressedPointers[0]
-                                                        val p2 = pressedPointers[1]
-                                                        val currentSpan = (p1.position - p2.position).getDistance()
-                                                        val currentCenter = (p1.position + p2.position) / 2f
+                                                         isPinching = true
+                                                         val p1 = pressedPointers[0]
+                                                         val p2 = pressedPointers[1]
+                                                         val currentSpan = (p1.position - p2.position).getDistance()
+                                                         val currentCenter = (p1.position + p2.position) / 2f
 
-                                                        if (currentLayer.isLocked) {
-                                                            p1.consume()
-                                                            p2.consume()
-                                                        } else {
-                                                            if (!recordedSnapshot) {
-                                                                viewModel.recordSnapshot()
-                                                                recordedSnapshot = true
-                                                            }
-                                                            if (prevSpan > 0f) {
-                                                                val zoomFactor = currentSpan / prevSpan
-                                                                val panDelta = currentCenter - prevCenter
+                                                         if (currentLayer.isLocked) {
+                                                             p1.consume()
+                                                             p2.consume()
+                                                         } else {
+                                                             if (!recordedSnapshot) {
+                                                                 viewModel.recordSnapshot()
+                                                                 recordedSnapshot = true
+                                                             }
+                                                             if (prevSpan > 0f) {
+                                                                 val zoomFactor = currentSpan / prevSpan
+                                                                 val panDelta = currentCenter - prevCenter
 
-                                                                if (currentLayer.imageUri != null) {
-                                                                    val newScale = (currentLayer.imageScale * zoomFactor).coerceIn(0.1f, 10.0f)
-                                                                    val framePxW = (canvasWidthPx * currentLayer.width).coerceAtLeast(10f)
-                                                                    val framePxH = (canvasHeightPx * currentLayer.height).coerceAtLeast(10f)
-                                                                    val newOffsetX = (currentLayer.imageOffsetX + (panDelta.x / canvasScale) / framePxW).coerceIn(-2.0f, 2.0f)
-                                                                    val newOffsetY = (currentLayer.imageOffsetY + (panDelta.y / canvasScale) / framePxH).coerceIn(-2.0f, 2.0f)
-                                                                    viewModel.updateLayer(currentLayer.copy(
-                                                                        imageScale = newScale,
-                                                                        imageOffsetX = newOffsetX,
-                                                                        imageOffsetY = newOffsetY
-                                                                    ))
-                                                                } else {
-                                                                    val minW = if (canvasWidthPx > 0f) (10f / canvasWidthPx).coerceIn(0.001f, 0.02f) else 0.005f
-                                                                    val minH = if (canvasHeightPx > 0f) (10f / canvasHeightPx).coerceIn(0.001f, 0.02f) else 0.005f
-                                                                    val newW = (currentLayer.width * zoomFactor).coerceIn(minW, 1f - currentLayer.x)
-                                                                    val newH = (currentLayer.height * zoomFactor).coerceIn(minH, 1f - currentLayer.y)
-                                                                    viewModel.updateLayer(currentLayer.copy(width = newW, height = newH))
-                                                                }
-                                                                p1.consume()
-                                                                p2.consume()
-                                                            }
-                                                            prevSpan = currentSpan
-                                                            prevCenter = currentCenter
-                                                        }
+                                                                 if (currentLayer.imageUri != null) {
+                                                                     val newScale = (currentLayer.imageScale * zoomFactor).coerceIn(0.1f, 10.0f)
+                                                                     val framePxW = (canvasWidthPx * currentLayer.width).coerceAtLeast(10f)
+                                                                     val framePxH = (canvasHeightPx * currentLayer.height).coerceAtLeast(10f)
+                                                                     val newOffsetX = (currentLayer.imageOffsetX + panDelta.x / framePxW).coerceIn(-2.0f, 2.0f)
+                                                                     val newOffsetY = (currentLayer.imageOffsetY + panDelta.y / framePxH).coerceIn(-2.0f, 2.0f)
+                                                                     viewModel.updateLayer(currentLayer.copy(
+                                                                         imageScale = newScale,
+                                                                         imageOffsetX = newOffsetX,
+                                                                         imageOffsetY = newOffsetY
+                                                                     ))
+                                                                 } else {
+                                                                     val minW = if (canvasWidthPx > 0f) (10f / canvasWidthPx).coerceIn(0.001f, 0.02f) else 0.005f
+                                                                     val minH = if (canvasHeightPx > 0f) (10f / canvasHeightPx).coerceIn(0.001f, 0.02f) else 0.005f
+                                                                     val newW = (currentLayer.width * zoomFactor).coerceIn(minW, 1f - currentLayer.x)
+                                                                     val newH = (currentLayer.height * zoomFactor).coerceIn(minH, 1f - currentLayer.y)
+                                                                     viewModel.updateLayer(currentLayer.copy(width = newW, height = newH))
+                                                                 }
+                                                                 p1.consume()
+                                                                 p2.consume()
+                                                             }
+                                                             prevSpan = currentSpan
+                                                             prevCenter = currentCenter
+                                                         }
                                                     } else if (pressedPointers.size == 1 && !isPinching) {
-                                                        val change = pressedPointers.first()
-                                                        val currentCanvasX = currentLayer.x * canvasWidthPx + change.position.x
-                                                        val currentCanvasY = currentLayer.y * canvasHeightPx + change.position.y
-                                                        val totalDeltaX = currentCanvasX - downCanvasX
-                                                        val totalDeltaY = currentCanvasY - downCanvasY
-                                                        val distanceMoved = kotlin.math.hypot(totalDeltaX, totalDeltaY)
+                                                         val change = pressedPointers.first()
+                                                         val currentFingerCanvasX = (currentLayer.x * canvasWidthPx) + change.position.x
+                                                         val currentFingerCanvasY = (currentLayer.y * canvasHeightPx) + change.position.y
+                                                         velocityTracker.addPosition(change.uptimeMillis, Offset(currentFingerCanvasX, currentFingerCanvasY))
+                                                         val totalDeltaX = currentFingerCanvasX - startTouchCanvasX
+                                                         val totalDeltaY = currentFingerCanvasY - startTouchCanvasY
+                                                         val distanceMoved = kotlin.math.hypot(totalDeltaX, totalDeltaY)
 
-                                                        if (!isDragging && distanceMoved > 6f) {
-                                                            isDragging = true
-                                                        }
+                                                         if (!isDragging && distanceMoved > 6f) {
+                                                             isDragging = true
+                                                             if (!recordedSnapshot && !startLayer.isLocked) {
+                                                                 viewModel.recordSnapshot()
+                                                                 recordedSnapshot = true
+                                                             }
+                                                         }
 
-                                                        if (isDragging) {
-                                                            change.consume()
-                                                            if (!currentLayer.isLocked) {
-                                                                if (!recordedSnapshot) {
-                                                                    viewModel.recordSnapshot()
-                                                                    recordedSnapshot = true
-                                                                }
-                                                                val targetX = startLayer.x + (totalDeltaX / canvasWidthPx)
-                                                                val targetY = startLayer.y + (totalDeltaY / canvasHeightPx)
+                                                         if (isDragging) {
+                                                             change.consume()
+                                                             if (!startLayer.isLocked) {
+                                                                 val targetX = startLayer.x + (totalDeltaX / canvasWidthPx)
+                                                                 val targetY = startLayer.y + (totalDeltaY / canvasHeightPx)
 
-                                                                if (isSnappingEnabled) {
-                                                                    val snapResult = AlignmentGuideUtils.calculateMoveSnap(
-                                                                        targetX = targetX,
-                                                                        targetY = targetY,
-                                                                        width = startLayer.width,
-                                                                        height = startLayer.height,
-                                                                        otherLayers = latestLayers.value.filter { it.id != currentLayer.id },
-                                                                        threshold = snapThreshold,
-                                                                        guideConfig = guideConfig,
-                                                                        canvasWidthPx = canvasWidthPx,
-                                                                        canvasHeightPx = canvasHeightPx
-                                                                    )
-                                                                    if (snapResult.snapped && activeGuides.isEmpty()) {
-                                                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                                    }
-                                                                    activeGuides = snapResult.guides
-                                                                    viewModel.updateLayer(currentLayer.copy(x = snapResult.x, y = snapResult.y))
-                                                                } else {
-                                                                    activeGuides = emptyList()
-                                                                    viewModel.updateLayer(
-                                                                        currentLayer.copy(
-                                                                            x = targetX.coerceIn(0f, (1f - currentLayer.width).coerceAtLeast(0f)),
-                                                                            y = targetY.coerceIn(0f, (1f - currentLayer.height).coerceAtLeast(0f))
-                                                                        )
-                                                                    )
-                                                                }
-                                                            }
-                                                        }
+                                                                 if (isSnappingEnabled) {
+                                                                     val snapResult = AlignmentGuideUtils.calculateMoveSnap(
+                                                                         targetX = targetX,
+                                                                         targetY = targetY,
+                                                                         width = startLayer.width,
+                                                                         height = startLayer.height,
+                                                                         otherLayers = latestLayers.value.filter { it.id != startLayer.id },
+                                                                         threshold = snapThreshold,
+                                                                         guideConfig = guideConfig,
+                                                                         canvasWidthPx = canvasWidthPx,
+                                                                         canvasHeightPx = canvasHeightPx
+                                                                     )
+                                                                     if (snapResult.snapped && activeGuides.isEmpty()) {
+                                                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                     }
+                                                                     activeGuides = snapResult.guides
+                                                                     lastDraggedX = snapResult.x
+                                                                     lastDraggedY = snapResult.y
+                                                                     viewModel.updateLayer(startLayer.copy(x = snapResult.x, y = snapResult.y))
+                                                                 } else {
+                                                                     activeGuides = emptyList()
+                                                                     val clampedX = targetX.coerceIn(0f, (1f - startLayer.width).coerceAtLeast(0f))
+                                                                     val clampedY = targetY.coerceIn(0f, (1f - startLayer.height).coerceAtLeast(0f))
+                                                                     lastDraggedX = clampedX
+                                                                     lastDraggedY = clampedY
+                                                                     viewModel.updateLayer(
+                                                                         startLayer.copy(
+                                                                             x = clampedX,
+                                                                             y = clampedY
+                                                                         )
+                                                                     )
+                                                                 }
+                                                             }
+                                                         }
                                                     }
                                                 } while (event.changes.any { it.pressed })
                                                 activeGuides = emptyList()
 
-                                                // If user did not drag or pinch, process tap, double-tap, or long-press
-                                                if (!isDragging && !isPinching) {
-                                                    val elapsed = System.currentTimeMillis() - downTime
-                                                    if (elapsed > 450) {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        contextMenuLayerId = layer.id
-                                                        showLayerContextMenu = true
+                                                // Smooth spring animation with velocity momentum and magnetic snap on release
+                                                if (isDragging && !startLayer.isLocked) {
+                                                    val velocity = velocityTracker.calculateVelocity()
+                                                    val velFractionX = (velocity.x / canvasWidthPx).coerceIn(-6f, 6f)
+                                                    val velFractionY = (velocity.y / canvasHeightPx).coerceIn(-6f, 6f)
+
+                                                    // Calculate natural momentum based on release velocity
+                                                    val flingDistX = (velFractionX * 0.08f).coerceIn(-0.15f, 0.15f)
+                                                    val flingDistY = (velFractionY * 0.08f).coerceIn(-0.15f, 0.15f)
+                                                    val projectedX = (lastDraggedX + flingDistX).coerceIn(0f, (1f - startLayer.width).coerceAtLeast(0f))
+                                                    val projectedY = (lastDraggedY + flingDistY).coerceIn(0f, (1f - startLayer.height).coerceAtLeast(0f))
+
+                                                    val finalTargetX: Float
+                                                    val finalTargetY: Float
+                                                    if (isSnappingEnabled) {
+                                                        val releaseSnap = AlignmentGuideUtils.calculateMoveSnap(
+                                                            targetX = projectedX,
+                                                            targetY = projectedY,
+                                                            width = startLayer.width,
+                                                            height = startLayer.height,
+                                                            otherLayers = latestLayers.value.filter { it.id != startLayer.id },
+                                                            threshold = snapThreshold * 1.25f,
+                                                            guideConfig = guideConfig,
+                                                            canvasWidthPx = canvasWidthPx,
+                                                            canvasHeightPx = canvasHeightPx
+                                                        )
+                                                        finalTargetX = releaseSnap.x
+                                                        finalTargetY = releaseSnap.y
                                                     } else {
-                                                        val now = System.currentTimeMillis()
-                                                        if (lastTapLayerId == layer.id && (now - lastTapTime) < 320) {
-                                                            val cur = latestLayers.value.find { it.id == layer.id } ?: layer
-                                                            if (!cur.isLocked) {
-                                                                viewModel.recordSnapshot()
-                                                                viewModel.updateLayer(cur.copy(imageScale = 1.0f, imageOffsetX = 0f, imageOffsetY = 0f))
+                                                        finalTargetX = projectedX
+                                                        finalTargetY = projectedY
+                                                    }
+
+                                                    val currentLayerAtRelease = latestLayers.value.find { it.id == layer.id } ?: startLayer
+                                                    val startAnimX = currentLayerAtRelease.x
+                                                    val startAnimY = currentLayerAtRelease.y
+
+                                                    if (kotlin.math.abs(startAnimX - finalTargetX) > 0.001f ||
+                                                        kotlin.math.abs(startAnimY - finalTargetY) > 0.001f ||
+                                                        kotlin.math.hypot(velFractionX, velFractionY) > 0.05f
+                                                    ) {
+                                                        layerAnimJobs[layer.id]?.cancel()
+                                                        layerAnimJobs[layer.id] = scope.launch {
+                                                            val animX = Animatable(startAnimX)
+                                                            val animY = Animatable(startAnimY)
+
+                                                            val jobX = launch {
+                                                                animX.animateTo(
+                                                                    targetValue = finalTargetX,
+                                                                    initialVelocity = velFractionX,
+                                                                    animationSpec = spring(
+                                                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                                                        stiffness = Spring.StiffnessMediumLow
+                                                                    )
+                                                                ) {
+                                                                    val cur = latestLayers.value.find { it.id == layer.id } ?: startLayer
+                                                                    viewModel.updateLayer(cur.copy(x = this.value))
+                                                                }
                                                             }
-                                                            lastTapTime = 0L
-                                                            lastTapLayerId = null
-                                                        } else {
-                                                            lastTapTime = now
-                                                            lastTapLayerId = layer.id
+
+                                                            val jobY = launch {
+                                                                animY.animateTo(
+                                                                    targetValue = finalTargetY,
+                                                                    initialVelocity = velFractionY,
+                                                                    animationSpec = spring(
+                                                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                                                        stiffness = Spring.StiffnessMediumLow
+                                                                    )
+                                                                ) {
+                                                                    val cur = latestLayers.value.find { it.id == layer.id } ?: startLayer
+                                                                    viewModel.updateLayer(cur.copy(y = this.value))
+                                                                }
+                                                            }
+
+                                                            jobX.join()
+                                                            jobY.join()
+                                                            val finalCur = latestLayers.value.find { it.id == layer.id } ?: startLayer
+                                                            viewModel.updateLayer(finalCur.copy(x = finalTargetX, y = finalTargetY))
+                                                        }
+                                                    }
+                                                }
+
+                                                // If user did not drag or pinch, process tap or double-tap
+                                                if (!isDragging && !isPinching) {
+                                                    val now = System.currentTimeMillis()
+                                                    val cur = latestLayers.value.find { it.id == layer.id } ?: layer
+                                                    if (lastTapLayerId == layer.id && (now - lastTapTime) < 320) {
+                                                        if (!cur.isLocked) {
+                                                            viewModel.recordSnapshot()
+                                                            viewModel.updateLayer(cur.copy(imageScale = 1.0f, imageOffsetX = 0f, imageOffsetY = 0f))
+                                                        }
+                                                        lastTapTime = 0L
+                                                        lastTapLayerId = null
+                                                    } else {
+                                                        lastTapTime = now
+                                                        lastTapLayerId = layer.id
+                                                        // Tap on unfilled photo frame opens photo picker immediately
+                                                        if (cur.imageUri == null) {
+                                                            photoPickerLauncher.launch(
+                                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                                            )
                                                         }
                                                     }
                                                 }
@@ -682,7 +782,14 @@ fun CollageEditorScreen(
                                                     modifier = Modifier.fillMaxSize(),
                                                     contentAlignment = Alignment.Center
                                                 ) {
-                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    val phScale = (1f / canvasScale.coerceAtLeast(0.15f)).coerceIn(0.5f, 1.2f)
+                                                    Column(
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        modifier = Modifier.graphicsLayer {
+                                                            scaleX = phScale
+                                                            scaleY = phScale
+                                                        }
+                                                    ) {
                                                         Icon(
                                                             imageVector = Icons.Default.AddAPhoto,
                                                             contentDescription = "Tambah Foto",
@@ -737,10 +844,16 @@ fun CollageEditorScreen(
 
                                         // Lock badge indicator on layer
                                         if (layer.isLocked) {
+                                            val lockScale = canvasScale.coerceAtLeast(0.15f)
                                             Box(
                                                 modifier = Modifier
                                                     .align(Alignment.TopEnd)
                                                     .padding(6.dp)
+                                                    .graphicsLayer {
+                                                        scaleX = 1f / lockScale
+                                                        scaleY = 1f / lockScale
+                                                        transformOrigin = TransformOrigin(1f, 0f)
+                                                    }
                                                     .size(20.dp)
                                                     .background(Color(0xFFFF9500), CircleShape)
                                                     .shadow(2.dp, CircleShape),
@@ -790,13 +903,18 @@ fun CollageEditorScreen(
                                 }
 
                                 if (isLocked) {
+                                    val safeScale = canvasScale.coerceAtLeast(0.15f)
                                     Surface(
                                         modifier = Modifier
                                             .align(Alignment.TopCenter)
-                                            .offset(y = (-14).dp)
+                                            .offset(y = (-14).dp / safeScale)
+                                            .graphicsLayer {
+                                                scaleX = 1f / safeScale
+                                                scaleY = 1f / safeScale
+                                                transformOrigin = TransformOrigin(0.5f, 1f)
+                                            }
                                             .clickable {
-                                                contextMenuLayerId = selectedLayer.id
-                                                showLayerContextMenu = true
+                                                viewModel.toggleLockLayer(selectedLayer.id)
                                             },
                                         shape = RoundedCornerShape(12.dp),
                                         color = Color(0xFFFF9500),
@@ -844,6 +962,7 @@ fun CollageEditorScreen(
                                 val maxTouchByLayer = (minLayerDimDp * 0.48f).coerceAtLeast(handleVisualSize)
                                 val handleTouchSize = minOf(baseTouchDp, maxTouchByLayer).coerceAtLeast(handleVisualSize)
                                 val halfTouch = handleTouchSize / 2
+                                val halfTouchPx = with(density) { halfTouch.toPx() }
                                 val handleBorderWidth = (2.dp / safeScale).coerceIn(1.dp, 3.dp)
                                 val handleInnerDotSize = (handleVisualSize * 0.35f).coerceAtLeast(2.dp / safeScale)
 
@@ -856,15 +975,18 @@ fun CollageEditorScreen(
                                     modifier = Modifier
                                         .offset(x = selLeftDp - halfTouch, y = selTopDp - halfTouch)
                                         .size(handleTouchSize)
-                                        .pointerInput(selectedLayer.id, canvasScale, canvasWidthPx, canvasHeightPx) {
+                                        .pointerInput(selectedLayer.id, canvasWidthPx, canvasHeightPx) {
                                             awaitPointerEventScope {
                                                 while (true) {
                                                     val down = awaitFirstDown(requireUnconsumed = false)
                                                     down.consume()
                                                     viewModel.recordSnapshot()
                                                     val start = latestLayers.value.find { it.id == selectedLayer.id } ?: selectedLayer
-                                                    val downCanvasX = start.x * canvasWidthPx + down.position.x
-                                                    val downCanvasY = start.y * canvasHeightPx + down.position.y
+                                                    val touchStartInHandle = down.position
+                                                    val startHandleCanvasX = (start.x * canvasWidthPx) - halfTouchPx
+                                                    val startHandleCanvasY = (start.y * canvasHeightPx) - halfTouchPx
+                                                    val startTouchCanvasX = startHandleCanvasX + touchStartInHandle.x
+                                                    val startTouchCanvasY = startHandleCanvasY + touchStartInHandle.y
 
                                                     while (true) {
                                                         val event = awaitPointerEvent()
@@ -874,11 +996,13 @@ fun CollageEditorScreen(
                                                             break
                                                         }
                                                         change.consume()
-                                                        val currentLayer = latestLayers.value.find { it.id == selectedLayer.id } ?: start
-                                                        val currentCanvasX = currentLayer.x * canvasWidthPx + change.position.x
-                                                        val currentCanvasY = currentLayer.y * canvasHeightPx + change.position.y
-                                                        val totalDeltaX = currentCanvasX - downCanvasX
-                                                        val totalDeltaY = currentCanvasY - downCanvasY
+                                                        val current = latestLayers.value.find { it.id == selectedLayer.id } ?: start
+                                                        val currentHandleCanvasX = (current.x * canvasWidthPx) - halfTouchPx
+                                                        val currentHandleCanvasY = (current.y * canvasHeightPx) - halfTouchPx
+                                                        val currentTouchCanvasX = currentHandleCanvasX + change.position.x
+                                                        val currentTouchCanvasY = currentHandleCanvasY + change.position.y
+                                                        val totalDeltaX = currentTouchCanvasX - startTouchCanvasX
+                                                        val totalDeltaY = currentTouchCanvasY - startTouchCanvasY
 
                                                         val maxSafeX = (start.x + start.width - minFractionX).coerceAtLeast(0f)
                                                         val rawX = (start.x + totalDeltaX / canvasWidthPx).coerceIn(0f, maxSafeX)
@@ -939,15 +1063,18 @@ fun CollageEditorScreen(
                                     modifier = Modifier
                                         .offset(x = selLeftDp + selWidthDp - halfTouch, y = selTopDp - halfTouch)
                                         .size(handleTouchSize)
-                                        .pointerInput(selectedLayer.id, canvasScale, canvasWidthPx, canvasHeightPx) {
+                                        .pointerInput(selectedLayer.id, canvasWidthPx, canvasHeightPx) {
                                             awaitPointerEventScope {
                                                 while (true) {
                                                     val down = awaitFirstDown(requireUnconsumed = false)
                                                     down.consume()
                                                     viewModel.recordSnapshot()
                                                     val start = latestLayers.value.find { it.id == selectedLayer.id } ?: selectedLayer
-                                                    val downCanvasX = (start.x + start.width) * canvasWidthPx + down.position.x
-                                                    val downCanvasY = start.y * canvasHeightPx + down.position.y
+                                                    val touchStartInHandle = down.position
+                                                    val startHandleCanvasX = (start.x + start.width) * canvasWidthPx - halfTouchPx
+                                                    val startHandleCanvasY = (start.y * canvasHeightPx) - halfTouchPx
+                                                    val startTouchCanvasX = startHandleCanvasX + touchStartInHandle.x
+                                                    val startTouchCanvasY = startHandleCanvasY + touchStartInHandle.y
 
                                                     while (true) {
                                                         val event = awaitPointerEvent()
@@ -957,11 +1084,13 @@ fun CollageEditorScreen(
                                                             break
                                                         }
                                                         change.consume()
-                                                        val currentLayer = latestLayers.value.find { it.id == selectedLayer.id } ?: start
-                                                        val currentCanvasX = (currentLayer.x + currentLayer.width) * canvasWidthPx + change.position.x
-                                                        val currentCanvasY = currentLayer.y * canvasHeightPx + change.position.y
-                                                        val totalDeltaX = currentCanvasX - downCanvasX
-                                                        val totalDeltaY = currentCanvasY - downCanvasY
+                                                        val current = latestLayers.value.find { it.id == selectedLayer.id } ?: start
+                                                        val currentHandleCanvasX = (current.x + current.width) * canvasWidthPx - halfTouchPx
+                                                        val currentHandleCanvasY = (current.y * canvasHeightPx) - halfTouchPx
+                                                        val currentTouchCanvasX = currentHandleCanvasX + change.position.x
+                                                        val currentTouchCanvasY = currentHandleCanvasY + change.position.y
+                                                        val totalDeltaX = currentTouchCanvasX - startTouchCanvasX
+                                                        val totalDeltaY = currentTouchCanvasY - startTouchCanvasY
 
                                                         val maxSafeY = (start.y + start.height - minFractionY).coerceAtLeast(0f)
                                                         val rawY = (start.y + totalDeltaY / canvasHeightPx).coerceIn(0f, maxSafeY)
@@ -1019,15 +1148,18 @@ fun CollageEditorScreen(
                                     modifier = Modifier
                                         .offset(x = selLeftDp - halfTouch, y = selTopDp + selHeightDp - halfTouch)
                                         .size(handleTouchSize)
-                                        .pointerInput(selectedLayer.id, canvasScale, canvasWidthPx, canvasHeightPx) {
+                                        .pointerInput(selectedLayer.id, canvasWidthPx, canvasHeightPx) {
                                             awaitPointerEventScope {
                                                 while (true) {
                                                     val down = awaitFirstDown(requireUnconsumed = false)
                                                     down.consume()
                                                     viewModel.recordSnapshot()
                                                     val start = latestLayers.value.find { it.id == selectedLayer.id } ?: selectedLayer
-                                                    val downCanvasX = start.x * canvasWidthPx + down.position.x
-                                                    val downCanvasY = (start.y + start.height) * canvasHeightPx + down.position.y
+                                                    val touchStartInHandle = down.position
+                                                    val startHandleCanvasX = (start.x * canvasWidthPx) - halfTouchPx
+                                                    val startHandleCanvasY = (start.y + start.height) * canvasHeightPx - halfTouchPx
+                                                    val startTouchCanvasX = startHandleCanvasX + touchStartInHandle.x
+                                                    val startTouchCanvasY = startHandleCanvasY + touchStartInHandle.y
 
                                                     while (true) {
                                                         val event = awaitPointerEvent()
@@ -1037,11 +1169,13 @@ fun CollageEditorScreen(
                                                             break
                                                         }
                                                         change.consume()
-                                                        val currentLayer = latestLayers.value.find { it.id == selectedLayer.id } ?: start
-                                                        val currentCanvasX = currentLayer.x * canvasWidthPx + change.position.x
-                                                        val currentCanvasY = (currentLayer.y + currentLayer.height) * canvasHeightPx + change.position.y
-                                                        val totalDeltaX = currentCanvasX - downCanvasX
-                                                        val totalDeltaY = currentCanvasY - downCanvasY
+                                                        val current = latestLayers.value.find { it.id == selectedLayer.id } ?: start
+                                                        val currentHandleCanvasX = (current.x * canvasWidthPx) - halfTouchPx
+                                                        val currentHandleCanvasY = (current.y + current.height) * canvasHeightPx - halfTouchPx
+                                                        val currentTouchCanvasX = currentHandleCanvasX + change.position.x
+                                                        val currentTouchCanvasY = currentHandleCanvasY + change.position.y
+                                                        val totalDeltaX = currentTouchCanvasX - startTouchCanvasX
+                                                        val totalDeltaY = currentTouchCanvasY - startTouchCanvasY
 
                                                         val maxSafeX = (start.x + start.width - minFractionX).coerceAtLeast(0f)
                                                         val rawX = (start.x + totalDeltaX / canvasWidthPx).coerceIn(0f, maxSafeX)
@@ -1099,15 +1233,18 @@ fun CollageEditorScreen(
                                     modifier = Modifier
                                         .offset(x = selLeftDp + selWidthDp - halfTouch, y = selTopDp + selHeightDp - halfTouch)
                                         .size(handleTouchSize)
-                                        .pointerInput(selectedLayer.id, canvasScale, canvasWidthPx, canvasHeightPx) {
+                                        .pointerInput(selectedLayer.id, canvasWidthPx, canvasHeightPx) {
                                             awaitPointerEventScope {
                                                 while (true) {
                                                     val down = awaitFirstDown(requireUnconsumed = false)
                                                     down.consume()
                                                     viewModel.recordSnapshot()
                                                     val start = latestLayers.value.find { it.id == selectedLayer.id } ?: selectedLayer
-                                                    val downCanvasX = (start.x + start.width) * canvasWidthPx + down.position.x
-                                                    val downCanvasY = (start.y + start.height) * canvasHeightPx + down.position.y
+                                                    val touchStartInHandle = down.position
+                                                    val startHandleCanvasX = (start.x + start.width) * canvasWidthPx - halfTouchPx
+                                                    val startHandleCanvasY = (start.y + start.height) * canvasHeightPx - halfTouchPx
+                                                    val startTouchCanvasX = startHandleCanvasX + touchStartInHandle.x
+                                                    val startTouchCanvasY = startHandleCanvasY + touchStartInHandle.y
 
                                                     while (true) {
                                                         val event = awaitPointerEvent()
@@ -1117,11 +1254,13 @@ fun CollageEditorScreen(
                                                             break
                                                         }
                                                         change.consume()
-                                                        val currentLayer = latestLayers.value.find { it.id == selectedLayer.id } ?: start
-                                                        val currentCanvasX = (currentLayer.x + currentLayer.width) * canvasWidthPx + change.position.x
-                                                        val currentCanvasY = (currentLayer.y + currentLayer.height) * canvasHeightPx + change.position.y
-                                                        val totalDeltaX = currentCanvasX - downCanvasX
-                                                        val totalDeltaY = currentCanvasY - downCanvasY
+                                                        val current = latestLayers.value.find { it.id == selectedLayer.id } ?: start
+                                                        val currentHandleCanvasX = (current.x + current.width) * canvasWidthPx - halfTouchPx
+                                                        val currentHandleCanvasY = (current.y + current.height) * canvasHeightPx - halfTouchPx
+                                                        val currentTouchCanvasX = currentHandleCanvasX + change.position.x
+                                                        val currentTouchCanvasY = currentHandleCanvasY + change.position.y
+                                                        val totalDeltaX = currentTouchCanvasX - startTouchCanvasX
+                                                        val totalDeltaY = currentTouchCanvasY - startTouchCanvasY
 
                                                         val rawW = (start.width + totalDeltaX / canvasWidthPx).coerceIn(minFractionX, (1f - start.x).coerceAtLeast(minFractionX))
                                                         val rawH = (start.height + totalDeltaY / canvasHeightPx).coerceIn(minFractionY, (1f - start.y).coerceAtLeast(minFractionY))
@@ -1176,12 +1315,17 @@ fun CollageEditorScreen(
                         // 3. Dynamic Alignment Guides Overlay (Visible during move and resize gestures)
                         DynamicAlignmentGuidesOverlay(
                             guides = activeGuides,
+                            canvasScale = canvasScale,
+                            canvasOffset = canvasOffset,
+                            viewportWidthDp = parentW,
+                            viewportHeightDp = parentH,
                             modifier = Modifier.fillMaxSize()
                         )
 
                         // New Guide Layout Overlay
                         NewGuideLayoutOverlay(
                             config = guideConfig,
+                            canvasScale = canvasScale,
                             modifier = Modifier.fillMaxSize()
                         )
                     }

@@ -316,10 +316,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Add a new blank custom layer
-    fun addLayer() {
+    fun addLayer(imageUri: String? = null): String {
         recordSnapshot()
+        val newId = UUID.randomUUID().toString()
         val newLayer = LayerModel(
-            id = UUID.randomUUID().toString(),
+            id = newId,
             x = 0.25f,
             y = 0.25f,
             width = 0.5f,
@@ -328,10 +329,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             borderThickness = 2f,
             borderColor = 0xFFFFFFFF.toInt(),
             cornerRadius = 8f,
-            shapeType = "rect"
+            shapeType = "rect",
+            imageUri = imageUri
         )
         _layers.value = _layers.value + newLayer
         selectedLayerId.value = newLayer.id
+        return newId
     }
 
     // Remove layer

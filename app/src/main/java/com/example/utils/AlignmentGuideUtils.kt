@@ -3,6 +3,7 @@ package com.example.utils
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,7 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.LayerModel
@@ -548,6 +552,10 @@ object AlignmentGuideUtils {
 @Composable
 fun DynamicAlignmentGuidesOverlay(
     guides: List<AlignmentGuide>,
+    canvasScale: Float = 1f,
+    canvasOffset: Offset = Offset.Zero,
+    viewportWidthDp: Dp = Dp.Unspecified,
+    viewportHeightDp: Dp = Dp.Unspecified,
     modifier: Modifier = Modifier
 ) {
     if (guides.isEmpty()) return
@@ -556,13 +564,16 @@ fun DynamicAlignmentGuidesOverlay(
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
         val density = androidx.compose.ui.platform.LocalDensity.current
+        val safeScale = canvasScale.coerceAtLeast(0.15f)
 
         val hasVerticalCenter = guides.any { it.isVertical && kotlin.math.abs(it.positionFraction - 0.5f) < 0.001f }
         val hasHorizontalCenter = guides.any { !it.isVertical && kotlin.math.abs(it.positionFraction - 0.5f) < 0.001f }
         val isFullCenterSnap = hasVerticalCenter && hasHorizontalCenter
 
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val dashPattern = PathEffect.dashPathEffect(floatArrayOf(14f, 8f), 0f)
+            val dashPattern = PathEffect.dashPathEffect(floatArrayOf(10f / safeScale, 6f / safeScale), 0f)
+            val glowWidth = (2.6.dp / safeScale).toPx()
+            val strokeWidth = (1.4.dp / safeScale).toPx()
 
             guides.forEach { guide ->
                 if (guide.isVertical) {
@@ -572,14 +583,14 @@ fun DynamicAlignmentGuidesOverlay(
                         color = Color.White.copy(alpha = 0.95f),
                         start = Offset(x, 0f),
                         end = Offset(x, size.height),
-                        strokeWidth = 3.5.dp.toPx()
+                        strokeWidth = glowWidth
                     )
                     // High-contrast primary neon guide stroke
                     drawLine(
                         color = guide.color,
                         start = Offset(x, 0f),
                         end = Offset(x, size.height),
-                        strokeWidth = 2.0.dp.toPx(),
+                        strokeWidth = strokeWidth,
                         pathEffect = dashPattern
                     )
                 } else {
@@ -589,14 +600,14 @@ fun DynamicAlignmentGuidesOverlay(
                         color = Color.White.copy(alpha = 0.95f),
                         start = Offset(0f, y),
                         end = Offset(size.width, y),
-                        strokeWidth = 3.5.dp.toPx()
+                        strokeWidth = glowWidth
                     )
                     // High-contrast primary neon guide stroke
                     drawLine(
                         color = guide.color,
                         start = Offset(0f, y),
                         end = Offset(size.width, y),
-                        strokeWidth = 2.0.dp.toPx(),
+                        strokeWidth = strokeWidth,
                         pathEffect = dashPattern
                     )
                 }
@@ -607,17 +618,17 @@ fun DynamicAlignmentGuidesOverlay(
                 val centerOffset = Offset(size.width * 0.5f, size.height * 0.5f)
                 drawCircle(
                     color = Color.White,
-                    radius = 16.dp.toPx(),
+                    radius = (14.dp / safeScale).toPx(),
                     center = centerOffset
                 )
                 drawCircle(
                     color = AlignmentGuideUtils.COLOR_CENTER,
-                    radius = 12.dp.toPx(),
+                    radius = (10.dp / safeScale).toPx(),
                     center = centerOffset
                 )
                 drawCircle(
                     color = Color.White,
-                    radius = 4.dp.toPx(),
+                    radius = (3.dp / safeScale).toPx(),
                     center = centerOffset
                 )
             }
@@ -626,28 +637,51 @@ fun DynamicAlignmentGuidesOverlay(
         val maxWDp = with(density) { widthPx.toDp() }
         val maxHDp = with(density) { heightPx.toDp() }
 
-        // Draw Guide Badges along edges
+        // Adaptive sticky viewport clamping: badges remain visible in the active screen area
+        val vWidthDp = if (viewportWidthDp != Dp.Unspecified) viewportWidthDp else maxWDp
+        val vHeightDp = if (viewportHeightDp != Dp.Unspecified) viewportHeightDp else maxHDp
+        val canvasOffsetDpX = with(density) { canvasOffset.x.toDp() }
+        val canvasOffsetDpY = with(density) { canvasOffset.y.toDp() }
+
+        val visibleTopDp = ((maxHDp / 2f) + (16.dp - (vHeightDp / 2f + canvasOffsetDpY)) / safeScale)
+            .coerceIn(8.dp / safeScale, (maxHDp - 32.dp / safeScale).coerceAtLeast(8.dp / safeScale))
+
+        val visibleLeftDp = ((maxWDp / 2f) + (16.dp - (vWidthDp / 2f + canvasOffsetDpX)) / safeScale)
+            .coerceIn(8.dp / safeScale, (maxWDp - 80.dp / safeScale).coerceAtLeast(8.dp / safeScale))
+
+        // Draw Guide Badges along edges:
+        // Inversely scaled with safeScale so badge text, dot, and padding maintain exact physical size on screen!
         guides.forEach { guide ->
             if (guide.isVertical) {
                 val xDp = with(density) { (guide.positionFraction * widthPx).toDp() }
                 Box(
                     modifier = Modifier
-                        .offset(x = (xDp - 32.dp).coerceIn(6.dp, (maxWDp - 76.dp).coerceAtLeast(6.dp)), y = 6.dp)
-                        .background(Color.Black.copy(alpha = 0.78f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                        .offset(
+                            x = xDp.coerceIn(6.dp / safeScale, (maxWDp - 8.dp / safeScale).coerceAtLeast(6.dp / safeScale)),
+                            y = visibleTopDp
+                        )
+                        .graphicsLayer {
+                            scaleX = 1f / safeScale
+                            scaleY = 1f / safeScale
+                            transformOrigin = TransformOrigin(0.5f, 0f)
+                        }
+                        .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 7.dp, vertical = 3.5.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
-                                .background(guide.color, androidx.compose.foundation.shape.CircleShape)
+                                .background(guide.color, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = guide.label,
                             color = Color.White,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
@@ -655,22 +689,32 @@ fun DynamicAlignmentGuidesOverlay(
                 val yDp = with(density) { (guide.positionFraction * heightPx).toDp() }
                 Box(
                     modifier = Modifier
-                        .offset(x = 6.dp, y = (yDp - 12.dp).coerceIn(6.dp, (maxHDp - 28.dp).coerceAtLeast(6.dp)))
-                        .background(Color.Black.copy(alpha = 0.78f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                        .offset(
+                            x = visibleLeftDp,
+                            y = yDp.coerceIn(6.dp / safeScale, (maxHDp - 8.dp / safeScale).coerceAtLeast(6.dp / safeScale))
+                        )
+                        .graphicsLayer {
+                            scaleX = 1f / safeScale
+                            scaleY = 1f / safeScale
+                            transformOrigin = TransformOrigin(0f, 0.5f)
+                        }
+                        .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 7.dp, vertical = 3.5.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
-                                .background(guide.color, androidx.compose.foundation.shape.CircleShape)
+                                .background(guide.color, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = guide.label,
                             color = Color.White,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
@@ -681,18 +725,21 @@ fun DynamicAlignmentGuidesOverlay(
 
 /**
  * Overlay Composable to draw New Guide Layout (Columns, Gutter, and Margins)
+ * Stroke width is scale-invariant so red column lines stay razor-thin and flexible when zoomed in.
  */
 @Composable
 fun NewGuideLayoutOverlay(
     config: com.example.ui.MainViewModel.GuideLayoutConfig,
+    canvasScale: Float = 1f,
     modifier: Modifier = Modifier
 ) {
     if (!config.enabled) return
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        val strokeWidth = 1.5.dp.toPx()
-        val guideColor = Color(0xFFFF2D55).copy(alpha = 0.75f)
+        val safeScale = canvasScale.coerceAtLeast(0.15f)
+        val strokeWidth = (1.2.dp / safeScale).toPx()
+        val guideColor = Color(0xFFFF2D55).copy(alpha = 0.82f)
         val marginColor = Color(0xFF00E5FF).copy(alpha = 0.85f)
 
         val marginTop = config.marginTopPx
