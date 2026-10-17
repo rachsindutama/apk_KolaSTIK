@@ -245,8 +245,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // If aspect ratio changed (e.g. 1:1 to 9:16), adapt layer coordinates safely
         val aspectFactor = oldAspect / newAspect
         val updatedLayers = _layers.value.map { layer ->
-            val adjW = if (aspectFactor < 1f) (layer.width * aspectFactor).coerceIn(0.1f, 1f) else layer.width.coerceIn(0.1f, 1f)
-            val adjH = if (aspectFactor > 1f) (layer.height / aspectFactor).coerceIn(0.1f, 1f) else layer.height.coerceIn(0.1f, 1f)
+            val adjW = if (aspectFactor < 1f) (layer.width * aspectFactor).coerceIn(0.01f, 1f) else layer.width.coerceIn(0.01f, 1f)
+            val adjH = if (aspectFactor > 1f) (layer.height / aspectFactor).coerceIn(0.01f, 1f) else layer.height.coerceIn(0.01f, 1f)
             val adjX = layer.x.coerceIn(0f, (1f - adjW).coerceAtLeast(0f))
             val adjY = layer.y.coerceIn(0f, (1f - adjH).coerceAtLeast(0f))
 

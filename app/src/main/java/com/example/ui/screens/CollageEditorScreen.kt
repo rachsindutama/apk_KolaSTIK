@@ -177,15 +177,20 @@ fun CollageEditorScreen(
                 val imgRatio = (imgW.toFloat() / imgH.toFloat().coerceAtLeast(1f)).coerceAtLeast(0.1f)
 
                 val parts = activeAspect.split(":")
-                val cw = parts.getOrNull(0)?.toFloatOrNull() ?: 1f
-                val ch = parts.getOrNull(1)?.toFloatOrNull() ?: 1f
-                val canvasRatio = (cw / ch.coerceAtLeast(1f)).coerceAtLeast(0.1f)
+                val cw = (parts.getOrNull(0)?.toFloatOrNull() ?: 1080f).coerceAtLeast(10f)
+                val ch = (parts.getOrNull(1)?.toFloatOrNull() ?: 1080f).coerceAtLeast(10f)
 
-                val normalizedRatio = imgRatio / canvasRatio
-                val targetW = if (normalizedRatio >= 1f) 0.65f else (0.65f * normalizedRatio).coerceIn(0.15f, 0.9f)
-                val targetH = if (normalizedRatio >= 1f) (0.65f / normalizedRatio).coerceIn(0.15f, 0.9f) else 0.65f
-                val targetX = ((1f - targetW) / 2f).coerceIn(0f, 1f)
-                val targetY = ((1f - targetH) / 2f).coerceIn(0f, 1f)
+                val shortestCanvas = kotlin.math.min(cw, ch)
+                val baseSize = shortestCanvas * 0.65f
+                val (targetPhysW, targetPhysH) = if (imgRatio >= 1.0f) {
+                    baseSize to (baseSize / imgRatio)
+                } else {
+                    (baseSize * imgRatio) to baseSize
+                }
+                val targetW = (targetPhysW / cw).coerceIn(0.04f, 0.90f)
+                val targetH = (targetPhysH / ch).coerceIn(0.04f, 0.90f)
+                val targetX = ((1f - targetW) / 2f).coerceIn(0f, 1f - targetW)
+                val targetY = ((1f - targetH) / 2f).coerceIn(0f, 1f - targetH)
 
                 viewModel.addLayer(
                     imageUri = uri.toString(),
@@ -831,11 +836,12 @@ fun CollageEditorScreen(
                                                 )
                                             } else {
                                                 // Unfilled Frame Placeholder
-                                                Box(
+                                                BoxWithConstraints(
                                                     modifier = Modifier.fillMaxSize(),
                                                     contentAlignment = Alignment.Center
                                                 ) {
                                                     val phScale = (1f / canvasScale.coerceAtLeast(0.15f)).coerceIn(0.5f, 1.2f)
+                                                    val isTinyFrame = maxHeight < 55.dp || maxWidth < 55.dp
                                                     Column(
                                                         horizontalAlignment = Alignment.CenterHorizontally,
                                                         modifier = Modifier.graphicsLayer {
@@ -847,12 +853,19 @@ fun CollageEditorScreen(
                                                             imageVector = Icons.Default.AddAPhoto,
                                                             contentDescription = "Tambah Foto",
                                                             tint = MaterialTheme.colorScheme.primary,
-                                                            modifier = Modifier.size(26.dp)
+                                                            modifier = Modifier.size(if (isTinyFrame) 18.dp else 26.dp)
                                                         )
-                                                        Spacer(modifier = Modifier.height(4.dp))
-                                                        Text("Tambah Foto", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                                        if (!isTinyFrame) {
                                                             Spacer(modifier = Modifier.height(3.dp))
-                                                      }
+                                                            Text(
+                                                                "Tambah Foto",
+                                                                fontSize = 10.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = MaterialTheme.colorScheme.onSurface,
+                                                                maxLines = 1
+                                                            )
+                                                        }
+                                                    }
                                                 }
                                             }
 
@@ -928,17 +941,159 @@ fun CollageEditorScreen(
 
                         // Empty Canvas Hint & Quick Add Action (Shown when canvas has no layers)
                     if (layers.isEmpty()) {
+                        val isVeryShort = canvasHeight < 90.dp
+                        val isShort = canvasHeight < 150.dp
+                        val isNarrow = canvasWidth < 180.dp
+
+                        if (isVeryShort) {
+                            // Ultra-compact horizontal row for extremely wide panoramic canvases (e.g. 3000x800 or 4000x1000)
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Layers,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Kanvas Kosong",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF8C8C8C),
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                FilledTonalButton(
+                                    onClick = { showAddOptionModal = true },
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFF2C2C2C),
+                                        contentColor = Color.White
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Tambah", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        } else if (isShort) {
+                            // Compact semi-horizontal layout when height is between 90.dp and 150.dp
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Layers,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Kanvas Kosong",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF8C8C8C),
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Ketuk Tambah untuk mulai mendesain",
+                                        fontSize = 10.sp,
+                                        color = Color(0xFF8C8C8C),
+                                        maxLines = 1
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                FilledTonalButton(
+                                    onClick = { showAddOptionModal = true },
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFF2C2C2C),
+                                        contentColor = Color.White
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(34.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Tambah Foto / Frame", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        } else if (isNarrow) {
+                            // Compact vertical layout for very tall / narrow vertical canvases
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.Center)
-                                    .padding(24.dp),
+                                    .padding(horizontal = 4.dp, vertical = 8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Layers,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(44.dp)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Kanvas Kosong",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF8C8C8C),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Mulai mendesain",
+                                    fontSize = 9.sp,
+                                    color = Color(0xFF8C8C8C),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                FilledTonalButton(
+                                    onClick = { showAddOptionModal = true },
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFF2C2C2C),
+                                        contentColor = Color.White
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text("+ Frame", fontSize = 9.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        } else {
+                            // Standard vertical layout when canvas has plenty of space
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Layers,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(40.dp)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
@@ -968,6 +1123,7 @@ fun CollageEditorScreen(
                                 }
                             }
                         }
+                    }
 
                         // 2. Draw Selection Bounding Box & 4 Interactive Corner Drag Handles (On Top As Siblings!)
                         val selectedLayer = layers.find { it.id == selectedId }
@@ -4393,7 +4549,7 @@ fun CollageEditorScreen(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Frame Kotak (Placeholder)",
+                                text = "Frame Placeholder",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -4468,7 +4624,7 @@ fun CollageEditorScreen(
                                     color = MaterialTheme.colorScheme.primary,
                                 ) {
                                     Text(
-                                        text = "Tanpa Frame",
+                                        text = "Tanpa Placeholder",
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimary,
@@ -4526,9 +4682,8 @@ fun CollageEditorScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 val canvasParts = activeAspect.split(":")
-                val canvasW = canvasParts.getOrNull(0)?.toFloatOrNull() ?: 1f
-                val canvasH = canvasParts.getOrNull(1)?.toFloatOrNull() ?: 1f
-                val canvasRatio = canvasW / canvasH
+                val canvasW = (canvasParts.getOrNull(0)?.toFloatOrNull() ?: 1080f).coerceAtLeast(10f)
+                val canvasH = (canvasParts.getOrNull(1)?.toFloatOrNull() ?: 1080f).coerceAtLeast(10f)
 
                 val ratios = listOf(
                     Triple("Instagram Square (1:1)", 1.0f, "1:1"),
@@ -4545,16 +4700,26 @@ fun CollageEditorScreen(
                             .padding(vertical = 4.dp)
                             .clickable {
                                 showPlaceholderRatioDialog = false
-                                val wFrac = 0.6f
-                                // Ensure the height doesn't force placeholder out of canvas bounds
-                                val hFrac = (wFrac * canvasRatio / targetRatio).coerceIn(0.1f, 0.9f)
-                                // Adjust wFrac if hFrac was clamped, to maintain aspect ratio
-                                val finalWFrac = (hFrac * targetRatio / canvasRatio).coerceIn(0.1f, 0.9f)
+                                // Scale proportionally relative to shortest canvas side so it never distorts on wide canvas (W > 2000px)
+                                val shortestSide = kotlin.math.min(canvasW, canvasH)
+                                val baseSize = shortestSide * 0.60f
+
+                                val (targetPhysicalW, targetPhysicalH) = if (targetRatio >= 1.0f) {
+                                    baseSize to (baseSize / targetRatio)
+                                } else {
+                                    (baseSize * targetRatio) to baseSize
+                                }
+
+                                val finalWFrac = (targetPhysicalW / canvasW).coerceIn(0.04f, 0.90f)
+                                val finalHFrac = (targetPhysicalH / canvasH).coerceIn(0.04f, 0.90f)
+                                val initialX = ((1f - finalWFrac) / 2f).coerceIn(0f, 1f - finalWFrac)
+                                val initialY = ((1f - finalHFrac) / 2f).coerceIn(0f, 1f - finalHFrac)
+
                                 viewModel.addLayer(
                                     initialWidth = finalWFrac,
-                                    initialHeight = hFrac,
-                                    initialX = ((1f - finalWFrac) / 2f).coerceIn(0.05f, 0.95f - finalWFrac),
-                                    initialY = ((1f - hFrac) / 2f).coerceIn(0.05f, 0.95f - hFrac),
+                                    initialHeight = finalHFrac,
+                                    initialX = initialX,
+                                    initialY = initialY,
                                     name = "Placeholder ($ratioCode)"
                                 )
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)

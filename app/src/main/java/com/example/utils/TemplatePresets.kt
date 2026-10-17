@@ -43,31 +43,12 @@ object TemplatePresets {
 
     private const val TEMPLATES_JSON = """[
   {
-    "name": "Dual Minimalist Vertical Split",
+    "name": "Dual Vertical Split",
     "aspectRatio": "1080:1350",
     "backgroundColor": -1,
     "layers": [
       {"id": "a01-1", "x": 0.04, "y": 0.04, "width": 0.92, "height": 0.45, "rotation": 0, "imageUri": "", "zIndex": 1, "borderThickness": 0, "borderColor": 0, "cornerRadius": 4, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
       {"id": "a01-2", "x": 0.04, "y": 0.51, "width": 0.92, "height": 0.45, "rotation": 0, "imageUri": "", "zIndex": 2, "borderThickness": 0, "borderColor": 0, "cornerRadius": 4, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false}
-    ]
-  },
-  {
-    "name": "Dual Side by Side Clean",
-    "aspectRatio": "1080:1350",
-    "backgroundColor": -1,
-    "layers": [
-      {"id": "a02-1", "x": 0.04, "y": 0.04, "width": 0.45, "height": 0.92, "rotation": 0, "imageUri": "", "zIndex": 1, "borderThickness": 0, "borderColor": 0, "cornerRadius": 4, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
-      {"id": "a02-2", "x": 0.51, "y": 0.04, "width": 0.45, "height": 0.92, "rotation": 0, "imageUri": "", "zIndex": 2, "borderThickness": 0, "borderColor": 0, "cornerRadius": 4, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false}
-    ]
-  },
-  {
-    "name": "Editorial Portrait Feature Left",
-    "aspectRatio": "1080:1350",
-    "backgroundColor": -1,
-    "layers": [
-      {"id": "a03-1", "x": 0.03, "y": 0.03, "width": 0.61, "height": 0.94, "rotation": 0, "imageUri": "", "zIndex": 1, "borderThickness": 0, "borderColor": 0, "cornerRadius": 0, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
-      {"id": "a03-2", "x": 0.66, "y": 0.03, "width": 0.31, "height": 0.46, "rotation": 0, "imageUri": "", "zIndex": 2, "borderThickness": 0, "borderColor": 0, "cornerRadius": 0, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
-      {"id": "a03-3", "x": 0.66, "y": 0.51, "width": 0.31, "height": 0.46, "rotation": 0, "imageUri": "", "zIndex": 3, "borderThickness": 0, "borderColor": 0, "cornerRadius": 0, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false}
     ]
   },
   {
@@ -102,16 +83,6 @@ object TemplatePresets {
     ]
   },
   {
-    "name": "Triptych Horizontal Pillars",
-    "aspectRatio": "1080:1350",
-    "backgroundColor": -1,
-    "layers": [
-      {"id": "a07-1", "x": 0.04, "y": 0.05, "width": 0.28, "height": 0.90, "rotation": 0, "imageUri": "", "zIndex": 1, "borderThickness": 0, "borderColor": 0, "cornerRadius": 0, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
-      {"id": "a07-2", "x": 0.36, "y": 0.05, "width": 0.28, "height": 0.90, "rotation": 0, "imageUri": "", "zIndex": 2, "borderThickness": 0, "borderColor": 0, "cornerRadius": 0, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
-      {"id": "a07-3", "x": 0.68, "y": 0.05, "width": 0.28, "height": 0.90, "rotation": 0, "imageUri": "", "zIndex": 3, "borderThickness": 0, "borderColor": 0, "cornerRadius": 0, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false}
-    ]
-  },
-  {
     "name": "Modern 5 Grid Editorial",
     "aspectRatio": "1080:1350",
     "backgroundColor": -1,
@@ -137,7 +108,7 @@ object TemplatePresets {
     ]
   },
   {
-    "name": "Single Floating Canvas Center",
+    "name": "Single Floating Center",
     "aspectRatio": "1080:1350",
     "backgroundColor": -1,
     "layers": [
@@ -154,7 +125,7 @@ object TemplatePresets {
     ]
   },
   {
-    "name": "Asymmetric 3 Tile Staggered",
+    "name": "Asymmetric 3 Tile",
     "aspectRatio": "1080:1350",
     "backgroundColor": -1,
     "layers": [
@@ -164,7 +135,7 @@ object TemplatePresets {
     ]
   },
   {
-    "name": "Moodboard 4 Tile Lookbook",
+    "name": "Moodboard 4 Tile",
     "aspectRatio": "1080:1350",
     "backgroundColor": -1,
     "layers": [
@@ -175,7 +146,7 @@ object TemplatePresets {
     ]
   },
   {
-    "name": "Full bleed Hero Bottom 3 Tile",
+    "name": "Full bleed Hero Bottom",
     "aspectRatio": "1080:1350",
     "backgroundColor": -1,
     "layers": [
@@ -185,7 +156,7 @@ object TemplatePresets {
     ]
   },
   {
-    "name": "Quad Vertical Columns Gapless",
+    "name": "Vertical Columns Gapless",
     "aspectRatio": "1080:1350",
     "backgroundColor": -1,
     "layers": [
@@ -196,23 +167,12 @@ object TemplatePresets {
     ]
   },
   {
-    "name": "Soft Round Inner Frame Dual",
+    "name": "Round Inner Frame Dual",
     "aspectRatio": "1080:1350",
     "backgroundColor": -1,
     "layers": [
       {"id": "a16-1", "x": 0.05, "y": 0.05, "width": 0.90, "height": 0.43, "rotation": 0, "imageUri": "", "zIndex": 1, "borderThickness": 0, "borderColor": 0, "cornerRadius": 20, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
       {"id": "a16-2", "x": 0.05, "y": 0.52, "width": 0.90, "height": 0.43, "rotation": 0, "imageUri": "", "zIndex": 2, "borderThickness": 0, "borderColor": 0, "cornerRadius": 20, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false}
-    ]
-  },
-  {
-    "name": "Soft Round Inner Frame Quad",
-    "aspectRatio": "1080:1350",
-    "backgroundColor": -1,
-    "layers": [
-      {"id": "a17-1", "x": 0.04, "y": 0.04, "width": 0.44, "height": 0.44, "rotation": 0, "imageUri": "", "zIndex": 1, "borderThickness": 0, "borderColor": 0, "cornerRadius": 16, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
-      {"id": "a17-2", "x": 0.52, "y": 0.04, "width": 0.44, "height": 0.44, "rotation": 0, "imageUri": "", "zIndex": 2, "borderThickness": 0, "borderColor": 0, "cornerRadius": 16, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
-      {"id": "a17-3", "x": 0.04, "y": 0.52, "width": 0.44, "height": 0.44, "rotation": 0, "imageUri": "", "zIndex": 3, "borderThickness": 0, "borderColor": 0, "cornerRadius": 16, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false},
-      {"id": "a17-4", "x": 0.52, "y": 0.52, "width": 0.44, "height": 0.44, "rotation": 0, "imageUri": "", "zIndex": 4, "borderThickness": 0, "borderColor": 0, "cornerRadius": 16, "filterId": "none", "imageScale": 1, "imageOffsetX": 0, "imageOffsetY": 0, "shapeType": "rect", "isLocked": false, "isVisible": true, "opacity": 1, "name": "", "dropShadowEnabled": false, "dropShadowBlur": 0, "dropShadowOffsetX": 0, "dropShadowOffsetY": 0, "dropShadowColor": 0, "innerShadowEnabled": false, "innerShadowBlur": 0, "innerShadowOffsetX": 0, "innerShadowOffsetY": 0, "innerShadowColor": 0, "outerGlowEnabled": false, "outerGlowRadius": 0, "outerGlowColor": 0, "fitImage": false, "lockAspectRatio": false}
     ]
   },
   {
@@ -238,7 +198,7 @@ object TemplatePresets {
     ]
   },
   {
-    "name": "Full bleed Seamless 3 Split Horizontal",
+    "name": "Full bleed 3 Split",
     "aspectRatio": "1080:1350",
     "backgroundColor": -1,
     "layers": [

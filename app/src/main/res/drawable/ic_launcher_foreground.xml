@@ -1,19 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="320"
-    android:viewportHeight="320">
-    <!-- Scaled to fill the adaptive icon viewport -->
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Top-Left Square: Vibrant Blue -->
     <path
-        android:fillColor="#0070f3"
-        android:pathData="M0,0 L150,0 L150,150 L0,150 Z"/>
+        android:fillColor="#1E65FF"
+        android:pathData="M32,32 h19 v19 h-19 z" />
+    <!-- Top-Right Square: Indigo Blue -->
     <path
-        android:fillColor="#7928ca"
-        android:pathData="M170,0 L320,0 L320,150 L170,150 Z"/>
+        android:fillColor="#4B46E5"
+        android:pathData="M57,32 h19 v19 h-19 z" />
+    <!-- Bottom-Left Square: Deep Indigo -->
     <path
-        android:fillColor="#7928ca"
-        android:pathData="M170,170 L320,170 L320,320 L170,320 Z"/>
+        android:fillColor="#3E51E8"
+        android:pathData="M32,57 h19 v19 h-19 z" />
+    <!-- Bottom-Right Square: Violet Purple -->
     <path
-        android:fillColor="#0070f3"
-        android:pathData="M0,170 L150,170 L150,320 L0,320 Z"/>
+        android:fillColor="#6E38DF"
+        android:pathData="M57,57 h19 v19 h-19 z" />
 </vector>

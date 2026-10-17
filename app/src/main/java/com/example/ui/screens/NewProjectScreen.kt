@@ -463,6 +463,23 @@ fun NewProjectScreen(
                     )
                 }
             }
+
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "@rachsindutama",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 
