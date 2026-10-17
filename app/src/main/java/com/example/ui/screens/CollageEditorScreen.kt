@@ -279,14 +279,14 @@ fun CollageEditorScreen(
                             onDismissRequest = { showViewMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Guides > New Guide Layout...") },
+                                text = { Text("Set Guide Layout") },
                                 onClick = {
                                     showViewMenu = false
                                     showNewGuideLayoutDialog = true
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Atur Sensitivitas Snap...") },
+                                text = { Text("Set Snap Sensitivity") },
                                 onClick = {
                                     showViewMenu = false
                                     showSnapSettingsDialog = true
@@ -317,14 +317,23 @@ fun CollageEditorScreen(
 
                     Button(
                         onClick = { showExportDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color(0xFF1E1E1E)
+                        ),
                         modifier = Modifier
                             .padding(end = 8.dp)
                             .testTag("export_image_button"),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = null,
+                            tint = Color(0xFF1E1E1E),
+                            modifier = Modifier.size(16.dp)
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Ekspor", fontSize = 12.sp)
+                        Text("Ekspor", fontSize = 12.sp, color = Color(0xFF1E1E1E), fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -843,19 +852,7 @@ fun CollageEditorScreen(
                                                         Spacer(modifier = Modifier.height(4.dp))
                                                         Text("Tambah Foto", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                                             Spacer(modifier = Modifier.height(3.dp))
-                                                            Surface(
-                                                                shape = RoundedCornerShape(4.dp),
-                                                                color = MaterialTheme.colorScheme.primaryContainer
-                                                            ) {
-                                                                Text(
-                                                                    text = if (layer.name.isNotBlank()) layer.name else "1:1",
-                                                                    fontSize = 9.sp,
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    color = MaterialTheme.colorScheme.primary,
-                                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                                )
-                                                            }
-                                                    }
+                                                      }
                                                 }
                                             }
 
@@ -959,11 +956,15 @@ fun CollageEditorScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
                                 FilledTonalButton(
                                     onClick = { showAddOptionModal = true },
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFF2C2C2C),
+                                        contentColor = Color.White
+                                    ),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Tambah Foto / Frame", fontSize = 12.sp)
+                                    Text("Tambah Foto / Frame", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }
@@ -1064,63 +1065,85 @@ fun CollageEditorScreen(
                                 val minFractionX = if (canvasWidthPx > 0f) (10f / canvasWidthPx).coerceIn(0.0005f, 0.015f) else 0.005f
                                 val minFractionY = if (canvasHeightPx > 0f) (10f / canvasHeightPx).coerceIn(0.0005f, 0.015f) else 0.005f
 
+                                var activeDragHandle by remember { mutableStateOf<Int?>(null) }
+                                var dragStartLeftDp by remember { mutableStateOf(0.dp) }
+                                var dragStartTopDp by remember { mutableStateOf(0.dp) }
+                                var dragStartWidthDp by remember { mutableStateOf(0.dp) }
+                                var dragStartHeightDp by remember { mutableStateOf(0.dp) }
+
                                 // Top-Left Corner Handle (Index 0)
+                                val handle0LeftDp = if (activeDragHandle == 0) dragStartLeftDp else selLeftDp
+                                val handle0TopDp = if (activeDragHandle == 0) dragStartTopDp else selTopDp
                                 Box(
                                     modifier = Modifier
-                                        .offset(x = selLeftDp - halfTouch, y = selTopDp - halfTouch)
+                                        .offset(x = handle0LeftDp - halfTouch, y = handle0TopDp - halfTouch)
                                         .size(handleTouchSize)
+                                        .graphicsLayer {
+                                            if (activeDragHandle == 0) {
+                                                translationX = with(density) { (selLeftDp - dragStartLeftDp).toPx() }
+                                                translationY = with(density) { (selTopDp - dragStartTopDp).toPx() }
+                                            }
+                                        }
                                         .pointerInput(selectedLayer.id, canvasWidthPx, canvasHeightPx) {
                                             awaitPointerEventScope {
                                                 while (true) {
                                                     val down = awaitFirstDown(requireUnconsumed = false)
                                                     down.consume()
                                                     viewModel.recordSnapshot()
+                                                    activeDragHandle = 0
+                                                    dragStartLeftDp = selLeftDp
+                                                    dragStartTopDp = selTopDp
+                                                    dragStartWidthDp = selWidthDp
+                                                    dragStartHeightDp = selHeightDp
+
                                                     val start = latestLayers.value.find { it.id == selectedLayer.id } ?: selectedLayer
-                                                    val touchStartInHandle = down.position
-                                                    val startHandleCanvasX = (start.x * canvasWidthPx) - halfTouchPx
-                                                    val startHandleCanvasY = (start.y * canvasHeightPx) - halfTouchPx
-                                                    val startTouchCanvasX = startHandleCanvasX + touchStartInHandle.x
-                                                    val startTouchCanvasY = startHandleCanvasY + touchStartInHandle.y
+                                                     val baseStartX = start.x
+                                                     val baseStartY = start.y
+                                                     val baseStartW = start.width
+                                                     val baseStartH = start.height
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                val touchStartPos = down.position
+                                                    var smoothedDeltaX = 0f
+                                                    var smoothedDeltaY = 0f
 
                                                     while (true) {
                                                         val event = awaitPointerEvent()
-                                                        val change = event.changes.find { it.id == down.id } ?: break
-                                                        if (!change.pressed) {
+                                                        val change = event.changes.find { it.id == down.id }
+                                                        if (change == null || !change.pressed) {
                                                             activeGuides = emptyList()
+                                                            activeDragHandle = null
                                                             break
                                                         }
                                                         change.consume()
-                                                        val current = latestLayers.value.find { it.id == selectedLayer.id } ?: start
-                                                        val currentHandleCanvasX = (current.x * canvasWidthPx) - halfTouchPx
-                                                        val currentHandleCanvasY = (current.y * canvasHeightPx) - halfTouchPx
-                                                        val currentTouchCanvasX = currentHandleCanvasX + change.position.x
-                                                        val currentTouchCanvasY = currentHandleCanvasY + change.position.y
-                                                        val totalDeltaX = currentTouchCanvasX - startTouchCanvasX
-                                                        val totalDeltaY = currentTouchCanvasY - startTouchCanvasY
+                                                        val targetDeltaX = change.position.x - touchStartPos.x
+                                                        val targetDeltaY = change.position.y - touchStartPos.y
+                                                        smoothedDeltaX += (targetDeltaX - smoothedDeltaX) * 0.45f
+                                                        smoothedDeltaY += (targetDeltaY - smoothedDeltaY) * 0.45f
+                                                        val totalDeltaX = smoothedDeltaX
+                                                        val totalDeltaY = smoothedDeltaY
 
-                                                        val maxSafeX = (start.x + start.width - minFractionX).coerceAtLeast(0f)
-                                                        val rawX = (start.x + totalDeltaX / canvasWidthPx).coerceIn(0f, maxSafeX)
-                                                        val maxSafeY = (start.y + start.height - minFractionY).coerceAtLeast(0f)
-                                                        val rawY = (start.y + totalDeltaY / canvasHeightPx).coerceIn(0f, maxSafeY)
-                                                        val rawW = (start.width - (rawX - start.x)).coerceIn(minFractionX, (1f - rawX).coerceAtLeast(minFractionX))
-                                                        val rawH = (start.height - (rawY - start.y)).coerceIn(minFractionY, (1f - rawY).coerceAtLeast(minFractionY))
+                                                        val maxSafeX = (baseStartX + baseStartW - minFractionX).coerceAtLeast(0f)
+                                                        val rawX = (baseStartX + totalDeltaX / canvasWidthPx).coerceIn(0f, maxSafeX)
+                                                        val maxSafeY = (baseStartY + baseStartH - minFractionY).coerceAtLeast(0f)
+                                                        val rawY = (baseStartY + totalDeltaY / canvasHeightPx).coerceIn(0f, maxSafeY)
+                                                        val rawW = (baseStartW - (rawX - baseStartX)).coerceIn(minFractionX, (1f - rawX).coerceAtLeast(minFractionX))
+                                                        val rawH = (baseStartH - (rawY - baseStartY)).coerceIn(minFractionY, (1f - rawY).coerceAtLeast(minFractionY))
 
                                                         val (calcX, calcY, calcW, calcH) = if (isRatioLocked) {
-                                                            val startWPx = (start.width * canvasWidthPx).coerceAtLeast(1f)
-                                                            val startHPx = (start.height * canvasHeightPx).coerceAtLeast(1f)
-                                                            val startRatio = startWPx / startHPx
-                                                            val anchorXPx = (start.x + start.width) * canvasWidthPx
-                                                            val anchorYPx = (start.y + start.height) * canvasHeightPx
+                                                            val baseStartWPx = (baseStartW * canvasWidthPx).coerceAtLeast(1f)
+                                                            val baseStartHPx = (baseStartH * canvasHeightPx).coerceAtLeast(1f)
+                                                            val startRatio = baseStartWPx / baseStartHPx
+                                                            val anchorXPx = (baseStartX + baseStartW) * canvasWidthPx
+                                                            val anchorYPx = (baseStartY + baseStartH) * canvasHeightPx
 
-                                                            val deltaScaleX = -totalDeltaX / startWPx
-                                                            val deltaScaleY = -totalDeltaY / startHPx
-                                                            val scaleFactor = (1f + if (kotlin.math.abs(totalDeltaX) > kotlin.math.abs(totalDeltaY)) deltaScaleX else deltaScaleY).coerceAtLeast(0.05f)
+                                                            val deltaScaleX = -totalDeltaX / baseStartWPx
+                                                            val deltaScaleY = -totalDeltaY / baseStartHPx
+                                                            val scaleFactor = (1f + (deltaScaleX + deltaScaleY) / 2f).coerceAtLeast(0.05f)
 
-                                                            val maxAllowedScale = minOf(anchorXPx / startWPx, anchorYPx / startHPx)
-                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / startWPx, (minFractionY * canvasHeightPx) / startHPx)
+                                                            val maxAllowedScale = minOf(anchorXPx / baseStartWPx, anchorYPx / baseStartHPx)
+                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / baseStartWPx, (minFractionY * canvasHeightPx) / baseStartHPx)
                                                             val clampedScale = scaleFactor.coerceIn(minAllowedScale, maxAllowedScale)
 
-                                                            val lockedWPx = startWPx * clampedScale
+                                                            val lockedWPx = baseStartWPx * clampedScale
                                                             val lockedHPx = lockedWPx / startRatio
 
                                                             val finalX = (anchorXPx - lockedWPx) / canvasWidthPx
@@ -1180,69 +1203,85 @@ fun CollageEditorScreen(
                                 }
 
                                 // Top-Right Corner Handle (Index 1)
+                                val handle1LeftDp = if (activeDragHandle == 1) dragStartLeftDp + dragStartWidthDp else selLeftDp + selWidthDp
+                                val handle1TopDp = if (activeDragHandle == 1) dragStartTopDp else selTopDp
                                 Box(
                                     modifier = Modifier
-                                        .offset(x = selLeftDp + selWidthDp - halfTouch, y = selTopDp - halfTouch)
+                                        .offset(x = handle1LeftDp - halfTouch, y = handle1TopDp - halfTouch)
                                         .size(handleTouchSize)
+                                        .graphicsLayer {
+                                            if (activeDragHandle == 1) {
+                                                translationX = with(density) { ((selLeftDp + selWidthDp) - (dragStartLeftDp + dragStartWidthDp)).toPx() }
+                                                translationY = with(density) { (selTopDp - dragStartTopDp).toPx() }
+                                            }
+                                        }
                                         .pointerInput(selectedLayer.id, canvasWidthPx, canvasHeightPx) {
                                             awaitPointerEventScope {
                                                 while (true) {
                                                     val down = awaitFirstDown(requireUnconsumed = false)
                                                     down.consume()
                                                     viewModel.recordSnapshot()
+                                                    activeDragHandle = 1
+                                                    dragStartLeftDp = selLeftDp
+                                                    dragStartTopDp = selTopDp
+                                                    dragStartWidthDp = selWidthDp
+                                                    dragStartHeightDp = selHeightDp
+
                                                     val start = latestLayers.value.find { it.id == selectedLayer.id } ?: selectedLayer
-                                                    val touchStartInHandle = down.position
-                                                    val startHandleCanvasX = (start.x + start.width) * canvasWidthPx - halfTouchPx
-                                                    val startHandleCanvasY = (start.y * canvasHeightPx) - halfTouchPx
-                                                    val startTouchCanvasX = startHandleCanvasX + touchStartInHandle.x
-                                                    val startTouchCanvasY = startHandleCanvasY + touchStartInHandle.y
+                                                     val baseStartX = start.x
+                                                     val baseStartY = start.y
+                                                     val baseStartW = start.width
+                                                     val baseStartH = start.height
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                val touchStartPos = down.position
+                                                    var smoothedDeltaX = 0f
+                                                    var smoothedDeltaY = 0f
 
                                                     while (true) {
                                                         val event = awaitPointerEvent()
-                                                        val change = event.changes.find { it.id == down.id } ?: break
-                                                        if (!change.pressed) {
+                                                        val change = event.changes.find { it.id == down.id }
+                                                        if (change == null || !change.pressed) {
                                                             activeGuides = emptyList()
+                                                            activeDragHandle = null
                                                             break
                                                         }
                                                         change.consume()
-                                                        val current = latestLayers.value.find { it.id == selectedLayer.id } ?: start
-                                                        val currentHandleCanvasX = (current.x + current.width) * canvasWidthPx - halfTouchPx
-                                                        val currentHandleCanvasY = (current.y * canvasHeightPx) - halfTouchPx
-                                                        val currentTouchCanvasX = currentHandleCanvasX + change.position.x
-                                                        val currentTouchCanvasY = currentHandleCanvasY + change.position.y
-                                                        val totalDeltaX = currentTouchCanvasX - startTouchCanvasX
-                                                        val totalDeltaY = currentTouchCanvasY - startTouchCanvasY
+                                                        val targetDeltaX = change.position.x - touchStartPos.x
+                                                        val targetDeltaY = change.position.y - touchStartPos.y
+                                                        smoothedDeltaX += (targetDeltaX - smoothedDeltaX) * 0.45f
+                                                        smoothedDeltaY += (targetDeltaY - smoothedDeltaY) * 0.45f
+                                                        val totalDeltaX = smoothedDeltaX
+                                                        val totalDeltaY = smoothedDeltaY
 
-                                                        val maxSafeY = (start.y + start.height - minFractionY).coerceAtLeast(0f)
-                                                        val rawY = (start.y + totalDeltaY / canvasHeightPx).coerceIn(0f, maxSafeY)
-                                                        val rawH = (start.height - (rawY - start.y)).coerceIn(minFractionY, (1f - rawY).coerceAtLeast(minFractionY))
-                                                        val rawW = (start.width + totalDeltaX / canvasWidthPx).coerceIn(minFractionX, (1f - start.x).coerceAtLeast(minFractionX))
+                                                        val maxSafeY = (baseStartY + baseStartH - minFractionY).coerceAtLeast(0f)
+                                                        val rawY = (baseStartY + totalDeltaY / canvasHeightPx).coerceIn(0f, maxSafeY)
+                                                        val rawH = (baseStartH - (rawY - baseStartY)).coerceIn(minFractionY, (1f - rawY).coerceAtLeast(minFractionY))
+                                                        val rawW = (baseStartW + totalDeltaX / canvasWidthPx).coerceIn(minFractionX, (1f - baseStartX).coerceAtLeast(minFractionX))
 
                                                         val (calcX, calcY, calcW, calcH) = if (isRatioLocked) {
-                                                            val startWPx = (start.width * canvasWidthPx).coerceAtLeast(1f)
-                                                            val startHPx = (start.height * canvasHeightPx).coerceAtLeast(1f)
-                                                            val startRatio = startWPx / startHPx
-                                                            val anchorXPx = start.x * canvasWidthPx
-                                                            val anchorYPx = (start.y + start.height) * canvasHeightPx
+                                                            val baseStartWPx = (baseStartW * canvasWidthPx).coerceAtLeast(1f)
+                                                            val baseStartHPx = (baseStartH * canvasHeightPx).coerceAtLeast(1f)
+                                                            val startRatio = baseStartWPx / baseStartHPx
+                                                            val anchorXPx = baseStartX * canvasWidthPx
+                                                            val anchorYPx = (baseStartY + baseStartH) * canvasHeightPx
 
-                                                            val deltaScaleX = totalDeltaX / startWPx
-                                                            val deltaScaleY = -totalDeltaY / startHPx
-                                                            val scaleFactor = (1f + if (kotlin.math.abs(totalDeltaX) > kotlin.math.abs(totalDeltaY)) deltaScaleX else deltaScaleY).coerceAtLeast(0.05f)
+                                                            val deltaScaleX = totalDeltaX / baseStartWPx
+                                                            val deltaScaleY = -totalDeltaY / baseStartHPx
+                                                            val scaleFactor = (1f + (deltaScaleX + deltaScaleY) / 2f).coerceAtLeast(0.05f)
 
-                                                            val maxAllowedScale = minOf((canvasWidthPx - anchorXPx) / startWPx, anchorYPx / startHPx)
-                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / startWPx, (minFractionY * canvasHeightPx) / startHPx)
+                                                            val maxAllowedScale = minOf((canvasWidthPx - anchorXPx) / baseStartWPx, anchorYPx / baseStartHPx)
+                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / baseStartWPx, (minFractionY * canvasHeightPx) / baseStartHPx)
                                                             val clampedScale = scaleFactor.coerceIn(minAllowedScale, maxAllowedScale)
 
-                                                            val lockedWPx = startWPx * clampedScale
+                                                            val lockedWPx = baseStartWPx * clampedScale
                                                             val lockedHPx = lockedWPx / startRatio
 
-                                                            val finalX = start.x
+                                                            val finalX = baseStartX
                                                             val finalY = (anchorYPx - lockedHPx) / canvasHeightPx
                                                             val finalW = lockedWPx / canvasWidthPx
                                                             val finalH = lockedHPx / canvasHeightPx
                                                             listOf(finalX, finalY, finalW, finalH)
                                                         } else {
-                                                            listOf(start.x, rawY, rawW, rawH)
+                                                            listOf(baseStartX, rawY, rawW, rawH)
                                                         }
 
                                                         if (isSnappingEnabled && !isRatioLocked) {
@@ -1293,69 +1332,85 @@ fun CollageEditorScreen(
                                 }
 
                                 // Bottom-Left Corner Handle (Index 2)
+                                val handle2LeftDp = if (activeDragHandle == 2) dragStartLeftDp else selLeftDp
+                                val handle2TopDp = if (activeDragHandle == 2) dragStartTopDp + dragStartHeightDp else selTopDp + selHeightDp
                                 Box(
                                     modifier = Modifier
-                                        .offset(x = selLeftDp - halfTouch, y = selTopDp + selHeightDp - halfTouch)
+                                        .offset(x = handle2LeftDp - halfTouch, y = handle2TopDp - halfTouch)
                                         .size(handleTouchSize)
+                                        .graphicsLayer {
+                                            if (activeDragHandle == 2) {
+                                                translationX = with(density) { (selLeftDp - dragStartLeftDp).toPx() }
+                                                translationY = with(density) { ((selTopDp + selHeightDp) - (dragStartTopDp + dragStartHeightDp)).toPx() }
+                                            }
+                                        }
                                         .pointerInput(selectedLayer.id, canvasWidthPx, canvasHeightPx) {
                                             awaitPointerEventScope {
                                                 while (true) {
                                                     val down = awaitFirstDown(requireUnconsumed = false)
                                                     down.consume()
                                                     viewModel.recordSnapshot()
+                                                    activeDragHandle = 2
+                                                    dragStartLeftDp = selLeftDp
+                                                    dragStartTopDp = selTopDp
+                                                    dragStartWidthDp = selWidthDp
+                                                    dragStartHeightDp = selHeightDp
+
                                                     val start = latestLayers.value.find { it.id == selectedLayer.id } ?: selectedLayer
-                                                    val touchStartInHandle = down.position
-                                                    val startHandleCanvasX = (start.x * canvasWidthPx) - halfTouchPx
-                                                    val startHandleCanvasY = (start.y + start.height) * canvasHeightPx - halfTouchPx
-                                                    val startTouchCanvasX = startHandleCanvasX + touchStartInHandle.x
-                                                    val startTouchCanvasY = startHandleCanvasY + touchStartInHandle.y
+                                                     val baseStartX = start.x
+                                                     val baseStartY = start.y
+                                                     val baseStartW = start.width
+                                                     val baseStartH = start.height
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                val touchStartPos = down.position
+                                                    var smoothedDeltaX = 0f
+                                                    var smoothedDeltaY = 0f
 
                                                     while (true) {
                                                         val event = awaitPointerEvent()
-                                                        val change = event.changes.find { it.id == down.id } ?: break
-                                                        if (!change.pressed) {
+                                                        val change = event.changes.find { it.id == down.id }
+                                                        if (change == null || !change.pressed) {
                                                             activeGuides = emptyList()
+                                                            activeDragHandle = null
                                                             break
                                                         }
                                                         change.consume()
-                                                        val current = latestLayers.value.find { it.id == selectedLayer.id } ?: start
-                                                        val currentHandleCanvasX = (current.x * canvasWidthPx) - halfTouchPx
-                                                        val currentHandleCanvasY = (current.y + current.height) * canvasHeightPx - halfTouchPx
-                                                        val currentTouchCanvasX = currentHandleCanvasX + change.position.x
-                                                        val currentTouchCanvasY = currentHandleCanvasY + change.position.y
-                                                        val totalDeltaX = currentTouchCanvasX - startTouchCanvasX
-                                                        val totalDeltaY = currentTouchCanvasY - startTouchCanvasY
+                                                        val targetDeltaX = change.position.x - touchStartPos.x
+                                                        val targetDeltaY = change.position.y - touchStartPos.y
+                                                        smoothedDeltaX += (targetDeltaX - smoothedDeltaX) * 0.45f
+                                                        smoothedDeltaY += (targetDeltaY - smoothedDeltaY) * 0.45f
+                                                        val totalDeltaX = smoothedDeltaX
+                                                        val totalDeltaY = smoothedDeltaY
 
-                                                        val maxSafeX = (start.x + start.width - minFractionX).coerceAtLeast(0f)
-                                                        val rawX = (start.x + totalDeltaX / canvasWidthPx).coerceIn(0f, maxSafeX)
-                                                        val rawW = (start.width - (rawX - start.x)).coerceIn(minFractionX, (1f - rawX).coerceAtLeast(minFractionX))
-                                                        val rawH = (start.height + totalDeltaY / canvasHeightPx).coerceIn(minFractionY, (1f - start.y).coerceAtLeast(minFractionY))
+                                                        val maxSafeX = (baseStartX + baseStartW - minFractionX).coerceAtLeast(0f)
+                                                        val rawX = (baseStartX + totalDeltaX / canvasWidthPx).coerceIn(0f, maxSafeX)
+                                                        val rawW = (baseStartW - (rawX - baseStartX)).coerceIn(minFractionX, (1f - rawX).coerceAtLeast(minFractionX))
+                                                        val rawH = (baseStartH + totalDeltaY / canvasHeightPx).coerceIn(minFractionY, (1f - baseStartY).coerceAtLeast(minFractionY))
 
                                                         val (calcX, calcY, calcW, calcH) = if (isRatioLocked) {
-                                                            val startWPx = (start.width * canvasWidthPx).coerceAtLeast(1f)
-                                                            val startHPx = (start.height * canvasHeightPx).coerceAtLeast(1f)
-                                                            val startRatio = startWPx / startHPx
-                                                            val anchorXPx = (start.x + start.width) * canvasWidthPx
-                                                            val anchorYPx = start.y * canvasHeightPx
+                                                            val baseStartWPx = (baseStartW * canvasWidthPx).coerceAtLeast(1f)
+                                                            val baseStartHPx = (baseStartH * canvasHeightPx).coerceAtLeast(1f)
+                                                            val startRatio = baseStartWPx / baseStartHPx
+                                                            val anchorXPx = (baseStartX + baseStartW) * canvasWidthPx
+                                                            val anchorYPx = baseStartY * canvasHeightPx
 
-                                                            val deltaScaleX = -totalDeltaX / startWPx
-                                                            val deltaScaleY = totalDeltaY / startHPx
-                                                            val scaleFactor = (1f + if (kotlin.math.abs(totalDeltaX) > kotlin.math.abs(totalDeltaY)) deltaScaleX else deltaScaleY).coerceAtLeast(0.05f)
+                                                            val deltaScaleX = -totalDeltaX / baseStartWPx
+                                                            val deltaScaleY = totalDeltaY / baseStartHPx
+                                                            val scaleFactor = (1f + (deltaScaleX + deltaScaleY) / 2f).coerceAtLeast(0.05f)
 
-                                                            val maxAllowedScale = minOf(anchorXPx / startWPx, (canvasHeightPx - anchorYPx) / startHPx)
-                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / startWPx, (minFractionY * canvasHeightPx) / startHPx)
+                                                            val maxAllowedScale = minOf(anchorXPx / baseStartWPx, (canvasHeightPx - anchorYPx) / baseStartHPx)
+                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / baseStartWPx, (minFractionY * canvasHeightPx) / baseStartHPx)
                                                             val clampedScale = scaleFactor.coerceIn(minAllowedScale, maxAllowedScale)
 
-                                                            val lockedWPx = startWPx * clampedScale
+                                                            val lockedWPx = baseStartWPx * clampedScale
                                                             val lockedHPx = lockedWPx / startRatio
 
                                                             val finalX = (anchorXPx - lockedWPx) / canvasWidthPx
-                                                            val finalY = start.y
+                                                            val finalY = baseStartY
                                                             val finalW = lockedWPx / canvasWidthPx
                                                             val finalH = lockedHPx / canvasHeightPx
                                                             listOf(finalX, finalY, finalW, finalH)
                                                         } else {
-                                                            listOf(rawX, start.y, rawW, rawH)
+                                                            listOf(rawX, baseStartY, rawW, rawH)
                                                         }
 
                                                         if (isSnappingEnabled && !isRatioLocked) {
@@ -1406,67 +1461,83 @@ fun CollageEditorScreen(
                                 }
 
                                 // Bottom-Right Corner Handle (Index 3)
+                                val handle3LeftDp = if (activeDragHandle == 3) dragStartLeftDp + dragStartWidthDp else selLeftDp + selWidthDp
+                                val handle3TopDp = if (activeDragHandle == 3) dragStartTopDp + dragStartHeightDp else selTopDp + selHeightDp
                                 Box(
                                     modifier = Modifier
-                                        .offset(x = selLeftDp + selWidthDp - halfTouch, y = selTopDp + selHeightDp - halfTouch)
+                                        .offset(x = handle3LeftDp - halfTouch, y = handle3TopDp - halfTouch)
                                         .size(handleTouchSize)
+                                        .graphicsLayer {
+                                            if (activeDragHandle == 3) {
+                                                translationX = with(density) { ((selLeftDp + selWidthDp) - (dragStartLeftDp + dragStartWidthDp)).toPx() }
+                                                translationY = with(density) { ((selTopDp + selHeightDp) - (dragStartTopDp + dragStartHeightDp)).toPx() }
+                                            }
+                                        }
                                         .pointerInput(selectedLayer.id, canvasWidthPx, canvasHeightPx) {
                                             awaitPointerEventScope {
                                                 while (true) {
                                                     val down = awaitFirstDown(requireUnconsumed = false)
                                                     down.consume()
                                                     viewModel.recordSnapshot()
+                                                    activeDragHandle = 3
+                                                    dragStartLeftDp = selLeftDp
+                                                    dragStartTopDp = selTopDp
+                                                    dragStartWidthDp = selWidthDp
+                                                    dragStartHeightDp = selHeightDp
+
                                                     val start = latestLayers.value.find { it.id == selectedLayer.id } ?: selectedLayer
-                                                    val touchStartInHandle = down.position
-                                                    val startHandleCanvasX = (start.x + start.width) * canvasWidthPx - halfTouchPx
-                                                    val startHandleCanvasY = (start.y + start.height) * canvasHeightPx - halfTouchPx
-                                                    val startTouchCanvasX = startHandleCanvasX + touchStartInHandle.x
-                                                    val startTouchCanvasY = startHandleCanvasY + touchStartInHandle.y
+                                                     val baseStartX = start.x
+                                                     val baseStartY = start.y
+                                                     val baseStartW = start.width
+                                                     val baseStartH = start.height
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                val touchStartPos = down.position
+                                                    var smoothedDeltaX = 0f
+                                                    var smoothedDeltaY = 0f
 
                                                     while (true) {
                                                         val event = awaitPointerEvent()
-                                                        val change = event.changes.find { it.id == down.id } ?: break
-                                                        if (!change.pressed) {
+                                                        val change = event.changes.find { it.id == down.id }
+                                                        if (change == null || !change.pressed) {
                                                             activeGuides = emptyList()
+                                                            activeDragHandle = null
                                                             break
                                                         }
                                                         change.consume()
-                                                        val current = latestLayers.value.find { it.id == selectedLayer.id } ?: start
-                                                        val currentHandleCanvasX = (current.x + current.width) * canvasWidthPx - halfTouchPx
-                                                        val currentHandleCanvasY = (current.y + current.height) * canvasHeightPx - halfTouchPx
-                                                        val currentTouchCanvasX = currentHandleCanvasX + change.position.x
-                                                        val currentTouchCanvasY = currentHandleCanvasY + change.position.y
-                                                        val totalDeltaX = currentTouchCanvasX - startTouchCanvasX
-                                                        val totalDeltaY = currentTouchCanvasY - startTouchCanvasY
+                                                        val targetDeltaX = change.position.x - touchStartPos.x
+                                                        val targetDeltaY = change.position.y - touchStartPos.y
+                                                        smoothedDeltaX += (targetDeltaX - smoothedDeltaX) * 0.45f
+                                                        smoothedDeltaY += (targetDeltaY - smoothedDeltaY) * 0.45f
+                                                        val totalDeltaX = smoothedDeltaX
+                                                        val totalDeltaY = smoothedDeltaY
 
-                                                        val rawW = (start.width + totalDeltaX / canvasWidthPx).coerceIn(minFractionX, (1f - start.x).coerceAtLeast(minFractionX))
-                                                        val rawH = (start.height + totalDeltaY / canvasHeightPx).coerceIn(minFractionY, (1f - start.y).coerceAtLeast(minFractionY))
+                                                        val rawW = (baseStartW + totalDeltaX / canvasWidthPx).coerceIn(minFractionX, (1f - baseStartX).coerceAtLeast(minFractionX))
+                                                        val rawH = (baseStartH + totalDeltaY / canvasHeightPx).coerceIn(minFractionY, (1f - baseStartY).coerceAtLeast(minFractionY))
 
                                                         val (calcX, calcY, calcW, calcH) = if (isRatioLocked) {
-                                                            val startWPx = (start.width * canvasWidthPx).coerceAtLeast(1f)
-                                                            val startHPx = (start.height * canvasHeightPx).coerceAtLeast(1f)
-                                                            val startRatio = startWPx / startHPx
-                                                            val anchorXPx = start.x * canvasWidthPx
-                                                            val anchorYPx = start.y * canvasHeightPx
+                                                            val baseStartWPx = (baseStartW * canvasWidthPx).coerceAtLeast(1f)
+                                                            val baseStartHPx = (baseStartH * canvasHeightPx).coerceAtLeast(1f)
+                                                            val startRatio = baseStartWPx / baseStartHPx
+                                                            val anchorXPx = baseStartX * canvasWidthPx
+                                                            val anchorYPx = baseStartY * canvasHeightPx
 
-                                                            val deltaScaleX = totalDeltaX / startWPx
-                                                            val deltaScaleY = totalDeltaY / startHPx
-                                                            val scaleFactor = (1f + if (kotlin.math.abs(totalDeltaX) > kotlin.math.abs(totalDeltaY)) deltaScaleX else deltaScaleY).coerceAtLeast(0.05f)
+                                                            val deltaScaleX = totalDeltaX / baseStartWPx
+                                                            val deltaScaleY = totalDeltaY / baseStartHPx
+                                                            val scaleFactor = (1f + (deltaScaleX + deltaScaleY) / 2f).coerceAtLeast(0.05f)
 
-                                                            val maxAllowedScale = minOf((canvasWidthPx - anchorXPx) / startWPx, (canvasHeightPx - anchorYPx) / startHPx)
-                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / startWPx, (minFractionY * canvasHeightPx) / startHPx)
+                                                            val maxAllowedScale = minOf((canvasWidthPx - anchorXPx) / baseStartWPx, (canvasHeightPx - anchorYPx) / baseStartHPx)
+                                                            val minAllowedScale = maxOf((minFractionX * canvasWidthPx) / baseStartWPx, (minFractionY * canvasHeightPx) / baseStartHPx)
                                                             val clampedScale = scaleFactor.coerceIn(minAllowedScale, maxAllowedScale)
 
-                                                            val lockedWPx = startWPx * clampedScale
+                                                            val lockedWPx = baseStartWPx * clampedScale
                                                             val lockedHPx = lockedWPx / startRatio
 
-                                                            val finalX = start.x
-                                                            val finalY = start.y
+                                                            val finalX = baseStartX
+                                                            val finalY = baseStartY
                                                             val finalW = lockedWPx / canvasWidthPx
                                                             val finalH = lockedHPx / canvasHeightPx
                                                             listOf(finalX, finalY, finalW, finalH)
                                                         } else {
-                                                            listOf(start.x, start.y, rawW, rawH)
+                                                            listOf(baseStartX, baseStartY, rawW, rawH)
                                                         }
 
                                                         if (isSnappingEnabled && !isRatioLocked) {
@@ -1572,8 +1643,8 @@ fun CollageEditorScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Badge(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            containerColor = Color(0xFF2C2C2C),
+                            contentColor = Color.White
                         ) {
                             Text(
                                 text = "${layers.size}",
@@ -1790,12 +1861,6 @@ fun CollageEditorScreen(
                                 )
                             }
 
-                            // 8. Canvas Sizing, Custom Dimensions, Background Colors (Always available)
-                            BottomActionItem(
-                                icon = Icons.Default.Palette,
-                                label = "Kanvas",
-                                onClick = { activeTool = "canvas" }
-                            )
 
                             // 9. Cloud template saving (Always available)
                             BottomActionItem(
@@ -1895,13 +1960,18 @@ fun CollageEditorScreen(
                                                         horizontalAlignment = Alignment.CenterHorizontally
                                                     ) {
                                                         Icon(
-                                                            imageVector = when(preset.id) {
-                                                                "grid_2x2" -> Icons.Default.GridView
-                                                                "aesthetic_trio" -> Icons.Default.ViewQuilt
-                                                                "polaroid_duo" -> Icons.Default.Style
-                                                                "editorial_cover" -> Icons.Default.AutoStories
-                                                                "triple_columns" -> Icons.Default.ViewColumn
-                                                                else -> Icons.Default.DashboardCustomize
+                                                            imageVector = when(preset.iconName) {
+                                                                "grid_view" -> Icons.Default.GridView
+                                                                "view_quilt" -> Icons.Default.ViewQuilt
+                                                                "style" -> Icons.Default.Style
+                                                                "auto_stories" -> Icons.Default.AutoStories
+                                                                "view_column" -> Icons.Default.ViewColumn
+                                                                "view_agenda" -> Icons.Default.ViewAgenda
+                                                                "view_stream" -> Icons.Default.ViewStream
+                                                                "view_headline" -> Icons.Default.ViewHeadline
+                                                                "dashboard" -> Icons.Default.Dashboard
+                                                                "dashboard_customize" -> Icons.Default.DashboardCustomize
+                                                                else -> Icons.Default.AutoAwesome
                                                             },
                                                             contentDescription = null,
                                                             tint = MaterialTheme.colorScheme.primary,
@@ -2121,7 +2191,6 @@ fun CollageEditorScreen(
                                             if (layer.imageUri != null) {
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Row(
-                                                    modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
@@ -2137,7 +2206,6 @@ fun CollageEditorScreen(
                                                         Text(if (layer.fitImage) "Isi Penuh (Crop)" else "Fit Gambar", fontSize = 10.sp)
                                                     }
                                                 }
-                                                
                                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                                                     item {
                                                         FilterChip(
@@ -2983,7 +3051,7 @@ fun CollageEditorScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.GridOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 8.dp))
-                    Text("New Guide Layout", fontWeight = FontWeight.Bold)
+                    Text("Set Guide Layout", fontWeight = FontWeight.Bold)
                 }
             },
             text = {
@@ -3095,7 +3163,7 @@ fun CollageEditorScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 8.dp))
-                    Text("Sensitivitas Magnetic Snap", fontWeight = FontWeight.Bold)
+                    Text("Snap Sensitivity", fontWeight = FontWeight.Bold)
                 }
             },
             text = {
@@ -3178,7 +3246,7 @@ fun CollageEditorScreen(
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(end = 8.dp)
                     )
-                    Text("Ekspor Resolusi Tinggi")
+                    Text("Ekspor Gambar")
                 }
             },
             text = {
@@ -3280,13 +3348,13 @@ fun CollageEditorScreen(
                         Text("Resolusi Lebar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
+                            color = Color.White
                         ) {
                             Text(
                                 resolutionText,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                color = Color(0xFF1E1E1E),
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -3296,6 +3364,11 @@ fun CollageEditorScreen(
                         value = exportWidth,
                         onValueChange = { exportWidth = it },
                         valueRange = 1080f..13500f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color.White,
+                            activeTrackColor = Color.White,
+                            inactiveTrackColor = Color(0xFF3A3A3A)
+                        ),
                         modifier = Modifier.fillMaxWidth().testTag("export_resolution_slider")
                     )
 
@@ -3317,6 +3390,18 @@ fun CollageEditorScreen(
                                 selected = isSelected,
                                 onClick = { exportWidth = v },
                                 label = { Text(name, fontSize = 11.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFF333333),
+                                    selectedLabelColor = Color.White,
+                                    selectedLeadingIconColor = Color.White,
+                                    containerColor = Color(0xFF1E1E1E),
+                                    labelColor = Color(0xFFDDDDDD)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    borderColor = if (isSelected) Color.White else Color(0xFF444444)
+                                ),
                                 leadingIcon = if (isSelected) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
                                 } else null
@@ -3338,7 +3423,7 @@ fun CollageEditorScreen(
                                 Icon(
                                     imageVector = Icons.Default.GridOn,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = Color.White,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -3346,7 +3431,7 @@ fun CollageEditorScreen(
                                     text = if (isTiledModeRecommended) "Tiled Engine (Anti-OOM Aktif)" else "Mode Render Ekspor",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = Color.White
                                 )
                             }
                             Text(
@@ -3363,10 +3448,10 @@ fun CollageEditorScreen(
                                 Surface(
                                     onClick = { tiledExportMode = TiledExportMode.SINGLE_MASTER },
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (tiledExportMode == TiledExportMode.SINGLE_MASTER) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                                    color = if (tiledExportMode == TiledExportMode.SINGLE_MASTER) Color(0xFF222222) else Color(0xFF181818),
                                     border = BorderStroke(
                                         1.dp,
-                                        if (tiledExportMode == TiledExportMode.SINGLE_MASTER) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                        if (tiledExportMode == TiledExportMode.SINGLE_MASTER) Color.White else Color.White.copy(alpha = 0.5f)
                                     ),
                                     modifier = Modifier.weight(1f)
                                 ) {
@@ -3378,7 +3463,7 @@ fun CollageEditorScreen(
                                             "1 File Master",
                                             fontSize = 11.sp,
                                             fontWeight = if (tiledExportMode == TiledExportMode.SINGLE_MASTER) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (tiledExportMode == TiledExportMode.SINGLE_MASTER) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                            color = Color.White
                                         )
                                     }
                                 }
@@ -3386,10 +3471,10 @@ fun CollageEditorScreen(
                                 Surface(
                                     onClick = { tiledExportMode = TiledExportMode.MULTI_PANEL_GRID },
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                                    color = if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) Color(0xFF222222) else Color(0xFF181818),
                                     border = BorderStroke(
                                         1.dp,
-                                        if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                        if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) Color.White else Color.White.copy(alpha = 0.5f)
                                     ),
                                     modifier = Modifier.weight(1f)
                                 ) {
@@ -3401,7 +3486,7 @@ fun CollageEditorScreen(
                                             "Grid Panel Banner",
                                             fontSize = 11.sp,
                                             fontWeight = if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (tiledExportMode == TiledExportMode.MULTI_PANEL_GRID) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                            color = Color.White
                                         )
                                     }
                                 }
@@ -3417,12 +3502,17 @@ fun CollageEditorScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Kualitas Kompresi JPG", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text("${exportQuality.toInt()}%", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                            Text("${exportQuality.toInt()}%", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
                         }
                         Slider(
                             value = exportQuality,
                             onValueChange = { exportQuality = it },
                             valueRange = 50f..100f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.White,
+                                activeTrackColor = Color.White,
+                                inactiveTrackColor = Color(0xFF3A3A3A)
+                            ),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -3465,9 +3555,13 @@ fun CollageEditorScreen(
                             }
                         }
                     },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF1E1E1E)
+                    ),
                     modifier = Modifier.testTag("confirm_collage_export_button")
                 ) {
-                    Text("Proses Render & Simpan")
+                    Text("Proses Render & Simpan", color = Color(0xFF1E1E1E), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -4431,26 +4525,36 @@ fun CollageEditorScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                val canvasParts = activeAspect.split(":")
+                val canvasW = canvasParts.getOrNull(0)?.toFloatOrNull() ?: 1f
+                val canvasH = canvasParts.getOrNull(1)?.toFloatOrNull() ?: 1f
+                val canvasRatio = canvasW / canvasH
+
                 val ratios = listOf(
-                    Triple("Instagram Square (1:1)", 0.6f to 0.6f, "1:1"),
-                    Triple("Instagram Portrait (4:5)", 0.55f to 0.68f, "4:5"),
-                    Triple("Instagram Story / Reels (9:16)", 0.45f to 0.8f, "9:16"),
-                    Triple("YouTube / Twitter Landscape (16:9)", 0.7f to 0.39f, "16:9"),
-                    Triple("Portrait A4 (3:4)", 0.55f to 0.73f, "3:4")
+                    Triple("Instagram Square (1:1)", 1.0f, "1:1"),
+                    Triple("Instagram Portrait (4:5)", 4f / 5f, "4:5"),
+                    Triple("Instagram Story / Reels (9:16)", 9f / 16f, "9:16"),
+                    Triple("YouTube / Twitter Landscape (16:9)", 16f / 9f, "16:9"),
+                    Triple("Portrait A4 (3:4)", 3f / 4f, "3:4")
                 )
 
-                ratios.forEach { (title, sizePair, ratioCode) ->
+                ratios.forEach { (title, targetRatio, ratioCode) ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
                             .clickable {
                                 showPlaceholderRatioDialog = false
+                                val wFrac = 0.6f
+                                // Ensure the height doesn't force placeholder out of canvas bounds
+                                val hFrac = (wFrac * canvasRatio / targetRatio).coerceIn(0.1f, 0.9f)
+                                // Adjust wFrac if hFrac was clamped, to maintain aspect ratio
+                                val finalWFrac = (hFrac * targetRatio / canvasRatio).coerceIn(0.1f, 0.9f)
                                 viewModel.addLayer(
-                                    initialWidth = sizePair.first,
-                                    initialHeight = sizePair.second,
-                                    initialX = 0.2f,
-                                    initialY = 0.2f,
+                                    initialWidth = finalWFrac,
+                                    initialHeight = hFrac,
+                                    initialX = ((1f - finalWFrac) / 2f).coerceIn(0.05f, 0.95f - finalWFrac),
+                                    initialY = ((1f - hFrac) / 2f).coerceIn(0.05f, 0.95f - hFrac),
                                     name = "Placeholder ($ratioCode)"
                                 )
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -4497,36 +4601,64 @@ fun CollageEditorScreen(
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
-            title = { Text("Keluar Editor") },
-            text = { Text("Apakah Anda ingin menyimpan perubahan kolase ini sebelum keluar?") },
+            title = {
+                Text(
+                    "Keluar Editor",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    "Apakah Anda ingin menyimpan perubahan kolase ini sebelum keluar?",
+                    fontSize = 13.sp,
+                    color = Color(0xFFCCCCCC),
+                    lineHeight = 18.sp
+                )
+            },
             confirmButton = {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = {
-                        showExitDialog = false
-                        viewModel.navigateTo(Screen.NewProject)
-                    }) {
-                        Text("Keluar", color = MaterialTheme.colorScheme.error)
+                    TextButton(
+                        onClick = { showExitDialog = false },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFBBBBBB)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text("Batal", fontSize = 13.sp)
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Button(onClick = {
-                        viewModel.saveProject {
+                    TextButton(
+                        onClick = {
                             showExitDialog = false
-                            Toast.makeText(context, "Proyek disimpan!", Toast.LENGTH_SHORT).show()
                             viewModel.navigateTo(Screen.NewProject)
-                        }
-                    }) {
-                        Text("Save")
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text("Keluar", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Button(
+                        onClick = {
+                            viewModel.saveProject {
+                                showExitDialog = false
+                                Toast.makeText(context, "Proyek disimpan!", Toast.LENGTH_SHORT).show()
+                                viewModel.navigateTo(Screen.NewProject)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color(0xFF1E1E1E)
+                        ),
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                    ) {
+                        Text("Simpan", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showExitDialog = false }) {
-                    Text("Batal")
-                }
-            }
+            dismissButton = null
         )
     }
 }

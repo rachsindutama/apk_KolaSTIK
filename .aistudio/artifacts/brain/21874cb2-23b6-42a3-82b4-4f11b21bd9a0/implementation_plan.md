@@ -3,7 +3,7 @@
 Transform the entire application into a sleek, professional Dark Gray Studio Theme (Charcoal dark mode) with high-contrast readable text, clean surfaces, and cohesive Material 3 dark styling.
 
 ## User Request & Clarification
-- **User Request**: Change theme from Light Theme to Dark Gray Theme
+- **User Request**: GANTI TAMPILAN APLIKASI INI JADI HITAM AJA
 - **Clarification Answer**: Dark Gray Studio Theme (Charcoal dark mode)
 
 ## Proposed Changes

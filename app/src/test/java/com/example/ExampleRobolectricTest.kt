@@ -24,7 +24,8 @@ class ExampleRobolectricTest {
     assertFalse(viewModel.canRedo.value)
 
     // Start a new project with a preset
-    viewModel.startNewProject("grid_2x2")
+    val firstPreset = com.example.utils.TemplatePresets.presets.first()
+    viewModel.startNewProject(firstPreset.id)
     val initialLayers = viewModel.layers.value
     assertTrue(initialLayers.isNotEmpty())
 

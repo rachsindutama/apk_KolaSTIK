@@ -1,13 +1,16 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -44,9 +47,34 @@ fun NewProjectScreen(
     var widthInput by remember { mutableStateOf("1080") }
     var heightInput by remember { mutableStateOf("1080") }
     var showManualDialog by remember { mutableStateOf(false) }
+    var selectedCanvasBgColor by remember { mutableStateOf(0xFFFFFFFF.toInt()) }
     var showImportDialog by remember { mutableStateOf(false) }
     var importText by remember { mutableStateOf("") }
     var importError by remember { mutableStateOf<String?>(null) }
+    var selectedRatioOption by remember { mutableStateOf("4:5") }
+    var isLandscape by remember { mutableStateOf(false) }
+    var ratioDropdownExpanded by remember { mutableStateOf(false) }
+
+    val (calcW, calcH, labelText) = remember(selectedRatioOption, isLandscape) {
+        when (selectedRatioOption) {
+            "1:1" -> Triple(1080, 1080, "1:1 (1080x1080)")
+            "3:4" -> if (isLandscape) Triple(1440, 1080, "4:3 (1440x1080)") else Triple(1080, 1440, "3:4 (1080x1440)")
+            "4:5" -> if (isLandscape) Triple(1350, 1080, "5:4 (1350x1080)") else Triple(1080, 1350, "4:5 (1080x1350)")
+            "2:3" -> if (isLandscape) Triple(1620, 1080, "3:2 (1620x1080)") else Triple(1080, 1620, "2:3 (1080x1620)")
+            "9:16" -> if (isLandscape) Triple(1920, 1080, "16:9 (1920x1080)") else Triple(1080, 1920, "9:16 (1080x1920)")
+            else -> Triple(1080, 1350, "4:5 (1080x1350)")
+        }
+    }
+    val ratioDisplayOnCard = remember(selectedRatioOption, isLandscape) {
+        when (selectedRatioOption) {
+            "1:1" -> "1:1"
+            "3:4" -> if (isLandscape) "4:3" else "3:4"
+            "4:5" -> if (isLandscape) "5:4" else "4:5"
+            "2:3" -> if (isLandscape) "3:2" else "2:3"
+            "9:16" -> if (isLandscape) "16:9" else "9:16"
+            else -> "4:5"
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -212,25 +240,158 @@ fun NewProjectScreen(
 
             // Section: Template Sosmed (Social Media Templates)
             item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Pilih Template",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-                
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.heightIn(max = 600.dp)
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    items(TemplatePresets.presets) { preset ->
-                        NewProjTemplatePresetCard(preset) {
-                            viewModel.startNewProject(preset.id)
+                    Text(
+                        "Pilih Template",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // Orientation Toggle Button (Vertikal / Horizontal)
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isLandscape) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { isLandscape = !isLandscape }
+                                .testTag("toggle_orientation_button")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isLandscape) Icons.Default.StayCurrentLandscape else Icons.Default.StayCurrentPortrait,
+                                    contentDescription = if (isLandscape) "Horizontal" else "Vertikal",
+                                    tint = if (isLandscape) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = if (isLandscape) "Horiz" else "Vert",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isLandscape) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
+
+                        // Ratio Dropdown Menu Button
+                        Box {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { ratioDropdownExpanded = true }
+                                    .testTag("ratio_dropdown_button")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        labelText,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Pilih Rasio",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            DropdownMenu(
+                                expanded = ratioDropdownExpanded,
+                                onDismissRequest = { ratioDropdownExpanded = false }
+                            ) {
+                                val ratioOptions = listOf("1:1", "3:4", "4:5", "2:3", "9:16")
+                                ratioOptions.forEach { ratio ->
+                                    val isSelected = selectedRatioOption == ratio
+                                    val itemLabel = when (ratio) {
+                                        "1:1" -> "1:1 (Persegi 1080x1080)"
+                                        "3:4" -> if (isLandscape) "4:3 (Landscape 1440x1080)" else "3:4 (Portrait 1080x1440)"
+                                        "4:5" -> if (isLandscape) "5:4 (Landscape 1350x1080)" else "4:5 (Portrait 1080x1350)"
+                                        "2:3" -> if (isLandscape) "3:2 (Landscape 1620x1080)" else "2:3 (Portrait 1080x1620)"
+                                        "9:16" -> if (isLandscape) "16:9 (Landscape 1920x1080)" else "9:16 (Story 1080x1920)"
+                                        else -> ratio
+                                    }
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                if (isSelected) {
+                                                    Icon(
+                                                        Icons.Default.Check,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(16.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                } else {
+                                                    Spacer(modifier = Modifier.size(16.dp))
+                                                }
+                                                Text(
+                                                    itemLabel,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                    fontSize = 13.sp
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            selectedRatioOption = ratio
+                                            ratioDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            val templateChunks = TemplatePresets.presets.chunked(2)
+            items(templateChunks) { rowPresets ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    rowPresets.forEach { preset ->
+                        Box(modifier = Modifier.weight(1f)) {
+                            NewProjTemplatePresetCard(
+                                preset = preset,
+                                currentRatioLabel = ratioDisplayOnCard,
+                                onClick = {
+                                    viewModel.startNewProject(
+                                        presetId = preset.id,
+                                        targetWidth = calcW,
+                                        targetHeight = calcH,
+                                        isLandscape = isLandscape
+                                    )
+                                }
+                            )
+                        }
+                    }
+                    if (rowPresets.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -340,14 +501,82 @@ fun NewProjectScreen(
                     Text("Preset Cepat:", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { widthInput = "1080"; heightInput = "1080" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
-                            Text("1:1", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Button(
+                            onClick = { widthInput = "1080"; heightInput = "1080" },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = Color(0xFF1E1E1E)
+                            )
+                        ) {
+                            Text("1:1", fontSize = 11.sp, color = Color(0xFF1E1E1E), fontWeight = FontWeight.Bold)
                         }
-                        Button(onClick = { widthInput = "1080"; heightInput = "1350" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
-                            Text("4:5", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Button(
+                            onClick = { widthInput = "1080"; heightInput = "1350" },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = Color(0xFF1E1E1E)
+                            )
+                        ) {
+                            Text("4:5", fontSize = 11.sp, color = Color(0xFF1E1E1E), fontWeight = FontWeight.Bold)
                         }
-                        Button(onClick = { widthInput = "1080"; heightInput = "1920" }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
-                            Text("9:16", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Button(
+                            onClick = { widthInput = "1080"; heightInput = "1920" },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = Color(0xFF1E1E1E)
+                            )
+                        ) {
+                            Text("9:16", fontSize = 11.sp, color = Color(0xFF1E1E1E), fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Warna Latar Belakang Kanvas:", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val bgColors = listOf(
+                        0xFFFFFFFF.toInt() to "Putih",
+                        0xFFF5F5F7.toInt() to "Abu Terang",
+                        0xFFE5E5EA.toInt() to "Platinum",
+                        0xFFF2EFE9.toInt() to "Cream",
+                        0xFFE2D6CA.toInt() to "Beige",
+                        0xFFD4E2D5.toInt() to "Sage",
+                        0xFFE8D3C3.toInt() to "Peach",
+                        0xFF1C1C1E.toInt() to "Charcoal",
+                        0xFF000000.toInt() to "Hitam"
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        items(bgColors) { (cInt, name) ->
+                            val isSelected = selectedCanvasBgColor == cInt
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(cInt))
+                                    .border(
+                                        width = if (isSelected) 2.5.dp else 1.dp,
+                                        color = if (isSelected) {
+                                            if (cInt == 0xFFFFFFFF.toInt() || cInt == 0xFFF5F5F7.toInt() || cInt == 0xFFF2EFE9.toInt()) Color(0xFF1E1E1E) else Color.White
+                                        } else Color(0xFF555555),
+                                        shape = CircleShape
+                                    )
+                                    .clickable { selectedCanvasBgColor = cInt },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = name,
+                                        tint = if (cInt == 0xFFFFFFFF.toInt() || cInt == 0xFFF5F5F7.toInt() || cInt == 0xFFF2EFE9.toInt() || cInt == 0xFFE5E5EA.toInt() || cInt == 0xFFE2D6CA.toInt() || cInt == 0xFFD4E2D5.toInt() || cInt == 0xFFE8D3C3.toInt()) Color(0xFF1E1E1E) else Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -358,11 +587,15 @@ fun NewProjectScreen(
                         val w = widthInput.toIntOrNull() ?: 1080
                         val h = heightInput.toIntOrNull() ?: 1080
                         showManualDialog = false
-                        viewModel.startCustomProject(w, h)
+                        viewModel.startCustomProject(w, h, selectedCanvasBgColor)
                     },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF1E1E1E)
+                    ),
                     modifier = Modifier.testTag("confirm_manual_canvas")
                 ) {
-                    Text("Mulai Edit")
+                    Text("Mulai Edit", color = Color(0xFF1E1E1E), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -422,13 +655,14 @@ fun NewProjectScreen(
 @Composable
 private fun NewProjTemplatePresetCard(
     preset: TemplatePreset,
+    currentRatioLabel: String,
     onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
         modifier = Modifier
-            .width(160.dp)
-            .height(140.dp)
+            .fillMaxWidth()
+            .height(138.dp)
             .testTag("template_card_${preset.id}"),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -438,37 +672,62 @@ private fun NewProjTemplatePresetCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(14.dp),
+                .padding(12.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = when (preset.iconName) {
-                        "grid_view" -> Icons.Default.GridView
-                        "view_quilt" -> Icons.Default.ViewQuilt
-                        "style" -> Icons.Default.Style
-                        "auto_stories" -> Icons.Default.AutoStories
-                        "view_column" -> Icons.Default.ViewColumn
-                        else -> Icons.Default.AutoAwesome
-                    },
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(20.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when (preset.iconName) {
+                            "grid_view" -> Icons.Default.GridView
+                            "view_quilt" -> Icons.Default.ViewQuilt
+                            "style" -> Icons.Default.Style
+                            "auto_stories" -> Icons.Default.AutoStories
+                            "view_column" -> Icons.Default.ViewColumn
+                            "view_agenda" -> Icons.Default.ViewAgenda
+                            "view_stream" -> Icons.Default.ViewStream
+                            "view_headline" -> Icons.Default.ViewHeadline
+                            "dashboard" -> Icons.Default.Dashboard
+                            "dashboard_customize" -> Icons.Default.DashboardCustomize
+                            else -> Icons.Default.AutoAwesome
+                        },
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    Text(
+                        text = currentRatioLabel,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
             }
             Column {
                 Text(
-                    text = preset.name,
+                    text = preset.cleanTitle,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    fontSize = 11.5.sp,
+                    maxLines = 2,
+                    minLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 14.5.sp
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(

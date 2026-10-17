@@ -177,16 +177,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Initialize blank freestyle or template
-    fun startNewProject(presetId: String) {
+    fun startNewProject(presetId: String, targetWidth: Int = 1080, targetHeight: Int = 1350, isLandscape: Boolean = false) {
         viewModelScope.launch {
             clearUndoRedo()
             val preset = TemplatePresets.presets.find { it.id == presetId }
             activeProjectId.value = null
-            activeProjectName.value = if (preset != null) "KolaSTIK ${preset.name}" else "Untitled Collage"
-            activeAspectRatio.value = preset?.defaultAspect ?: "1:1"
-            activeBackgroundColor.value = 0xFFFFFFFF.toInt()
+            activeProjectName.value = if (preset != null) "KolaSTIK ${preset.cleanTitle}" else "Untitled Collage"
+            activeAspectRatio.value = "$targetWidth:$targetHeight"
+            activeBackgroundColor.value = preset?.backgroundColor ?: 0xFFFFFFFF.toInt()
             if (preset != null) {
-                _layers.value = preset.generateLayers()
+                _layers.value = preset.generateAdaptedLayers(targetWidth, targetHeight, isLandscape)
                 selectedLayerId.value = _layers.value.firstOrNull()?.id
             } else {
                 _layers.value = emptyList()
@@ -196,7 +196,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun startCustomProject(width: Int, height: Int) {
+    fun startCustomProject(width: Int, height: Int, backgroundColor: Int = 0xFFFFFFFF.toInt()) {
         viewModelScope.launch {
             clearUndoRedo()
             val safeW = width.coerceIn(100, 13500)
@@ -204,7 +204,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeProjectId.value = null
             activeProjectName.value = "Custom ${safeW}x${safeH}"
             activeAspectRatio.value = "$safeW:$safeH"
-            activeBackgroundColor.value = 0xFFFFFFFF.toInt()
+            activeBackgroundColor.value = backgroundColor
             _layers.value = emptyList()
             selectedLayerId.value = null
             navigateTo(Screen.Editor)

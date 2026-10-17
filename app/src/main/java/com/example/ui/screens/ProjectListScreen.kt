@@ -432,8 +432,7 @@ fun TemplatePresetCard(
                                 .background(
                                     when (l.shapeType) {
                                         "polaroid" -> Color.LightGray.copy(alpha = 0.9f)
-                                        "oval" -> Color.Magenta.copy(alpha = 0.15f)
-                                        else -> Color.Blue.copy(alpha = 0.15f)
+                                        else -> Color(0xFF2C2C2C).copy(alpha = 0.35f)
                                     }
                                 )
                         )
