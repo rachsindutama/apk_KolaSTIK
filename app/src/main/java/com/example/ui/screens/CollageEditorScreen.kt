@@ -17,6 +17,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -448,6 +449,12 @@ fun CollageEditorScreen(
                         val canvasWidthPx = with(density) { canvasWidth.toPx() }
                         val canvasHeightPx = with(density) { canvasHeight.toPx() }
 
+                        var activeDragLayerId by remember { mutableStateOf<String?>(null) }
+                        var dragStartLeftDp by remember { mutableStateOf(0.dp) }
+                        var dragStartTopDp by remember { mutableStateOf(0.dp) }
+                        var dragVisualTranslationX by remember { mutableFloatStateOf(0f) }
+                        var dragVisualTranslationY by remember { mutableFloatStateOf(0f) }
+
                         // 1. Draw Layers (Sorted by zIndex)
                         layers.sortedBy { it.zIndex }.forEach { layer ->
                             val isSelected = layer.id == selectedId
@@ -456,9 +463,13 @@ fun CollageEditorScreen(
                             val widthDp = canvasWidth * layer.width
                             val heightDp = canvasHeight * layer.height
 
+                            val isThisLayerDragging = (activeDragLayerId == layer.id)
+                            val effectiveLeftDp = if (isThisLayerDragging) dragStartLeftDp else leftDp
+                            val effectiveTopDp = if (isThisLayerDragging) dragStartTopDp else topDp
+
                             Box(
                                 modifier = Modifier
-                                    .offset(x = leftDp, y = topDp)
+                                    .offset(x = effectiveLeftDp, y = effectiveTopDp)
                                     .size(width = widthDp, height = heightDp)
                                     // Mouse/Trackpad scroll wheel on photo frame zooms the photo inside the frame!
                                     .pointerInput(layer.id) {
@@ -505,6 +516,13 @@ fun CollageEditorScreen(
                                                 var prevCenter = Offset.Zero
                                                 var lastDraggedX = startLayer.x
                                                 var lastDraggedY = startLayer.y
+
+                                                // Freeze layout position for this layer during gesture
+                                                activeDragLayerId = layer.id
+                                                dragStartLeftDp = canvasWidth * startLayer.x
+                                                dragStartTopDp = canvasHeight * startLayer.y
+                                                dragVisualTranslationX = 0f
+                                                dragVisualTranslationY = 0f
 
                                                 // Immediately select this layer so the selection boundary appears
                                                 if (viewModel.selectedLayerId.value != layer.id) {
@@ -561,14 +579,17 @@ fun CollageEditorScreen(
                                                          }
                                                     } else if (pressedPointers.size == 1 && !isPinching) {
                                                          val change = pressedPointers.first()
-                                                         val currentFingerCanvasX = (currentLayer.x * canvasWidthPx) + change.position.x
-                                                         val currentFingerCanvasY = (currentLayer.y * canvasHeightPx) + change.position.y
+                                                         change.consume() // Consume immediately so canvas pan doesn't steal gesture!
+
+                                                         // Coordinates are 100% stable because the Box's layout is frozen at dragStartLeftDp
+                                                         val currentFingerCanvasX = (startLayer.x * canvasWidthPx) + change.position.x
+                                                         val currentFingerCanvasY = (startLayer.y * canvasHeightPx) + change.position.y
                                                          velocityTracker.addPosition(change.uptimeMillis, Offset(currentFingerCanvasX, currentFingerCanvasY))
-                                                         val totalDeltaX = currentFingerCanvasX - startTouchCanvasX
-                                                         val totalDeltaY = currentFingerCanvasY - startTouchCanvasY
+                                                         val totalDeltaX = change.position.x - touchStartInLayer.x
+                                                         val totalDeltaY = change.position.y - touchStartInLayer.y
                                                          val distanceMoved = kotlin.math.hypot(totalDeltaX, totalDeltaY)
 
-                                                         if (!isDragging && distanceMoved > 6f) {
+                                                         if (!isDragging && distanceMoved > 4f) {
                                                              isDragging = true
                                                              if (!recordedSnapshot && !startLayer.isLocked) {
                                                                  viewModel.recordSnapshot()
@@ -577,10 +598,12 @@ fun CollageEditorScreen(
                                                          }
 
                                                          if (isDragging) {
-                                                             change.consume()
                                                              if (!startLayer.isLocked) {
                                                                  val targetX = startLayer.x + (totalDeltaX / canvasWidthPx)
                                                                  val targetY = startLayer.y + (totalDeltaY / canvasHeightPx)
+
+                                                                 val activeX: Float
+                                                                 val activeY: Float
 
                                                                  if (isSnappingEnabled) {
                                                                      val snapResult = AlignmentGuideUtils.calculateMoveSnap(
@@ -598,22 +621,20 @@ fun CollageEditorScreen(
                                                                          haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                                      }
                                                                      activeGuides = snapResult.guides
-                                                                     lastDraggedX = snapResult.x
-                                                                     lastDraggedY = snapResult.y
-                                                                     viewModel.updateLayer(startLayer.copy(x = snapResult.x, y = snapResult.y))
+                                                                     activeX = snapResult.x
+                                                                     activeY = snapResult.y
                                                                  } else {
                                                                      activeGuides = emptyList()
-                                                                     val clampedX = targetX.coerceIn(0f, (1f - startLayer.width).coerceAtLeast(0f))
-                                                                     val clampedY = targetY.coerceIn(0f, (1f - startLayer.height).coerceAtLeast(0f))
-                                                                     lastDraggedX = clampedX
-                                                                     lastDraggedY = clampedY
-                                                                     viewModel.updateLayer(
-                                                                         startLayer.copy(
-                                                                             x = clampedX,
-                                                                             y = clampedY
-                                                                         )
-                                                                     )
+                                                                     activeX = targetX.coerceIn(0f, (1f - startLayer.width).coerceAtLeast(0f))
+                                                                     activeY = targetY.coerceIn(0f, (1f - startLayer.height).coerceAtLeast(0f))
                                                                  }
+
+                                                                 lastDraggedX = activeX
+                                                                 lastDraggedY = activeY
+                                                                 dragVisualTranslationX = (activeX - startLayer.x) * canvasWidthPx
+                                                                 dragVisualTranslationY = (activeY - startLayer.y) * canvasHeightPx
+
+                                                                 viewModel.updateLayer(startLayer.copy(x = activeX, y = activeY))
                                                              }
                                                          }
                                                     }
@@ -657,49 +678,49 @@ fun CollageEditorScreen(
                                                     val startAnimX = currentLayerAtRelease.x
                                                     val startAnimY = currentLayerAtRelease.y
 
-                                                    if (kotlin.math.abs(startAnimX - finalTargetX) > 0.001f ||
-                                                        kotlin.math.abs(startAnimY - finalTargetY) > 0.001f ||
-                                                        kotlin.math.hypot(velFractionX, velFractionY) > 0.05f
-                                                    ) {
+                                                    val needsAnimation = kotlin.math.abs(startAnimX - finalTargetX) > 0.001f ||
+                                                                         kotlin.math.abs(startAnimY - finalTargetY) > 0.001f ||
+                                                                         kotlin.math.hypot(velFractionX, velFractionY) > 0.05f
+
+                                                    if (needsAnimation) {
                                                         layerAnimJobs[layer.id]?.cancel()
                                                         layerAnimJobs[layer.id] = scope.launch {
-                                                            val animX = Animatable(startAnimX)
-                                                            val animY = Animatable(startAnimY)
-
-                                                            val jobX = launch {
-                                                                animX.animateTo(
-                                                                    targetValue = finalTargetX,
-                                                                    initialVelocity = velFractionX,
-                                                                    animationSpec = spring(
-                                                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                                                        stiffness = Spring.StiffnessMediumLow
-                                                                    )
-                                                                ) {
-                                                                    val cur = latestLayers.value.find { it.id == layer.id } ?: startLayer
-                                                                    viewModel.updateLayer(cur.copy(x = this.value))
-                                                                }
+                                                            val animOffset = Animatable(
+                                                                initialValue = Offset(startAnimX, startAnimY),
+                                                                typeConverter = Offset.VectorConverter
+                                                            )
+                                                            animOffset.animateTo(
+                                                                targetValue = Offset(finalTargetX, finalTargetY),
+                                                                initialVelocity = Offset(velFractionX, velFractionY),
+                                                                animationSpec = spring(
+                                                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                                                    stiffness = Spring.StiffnessMediumLow
+                                                                )
+                                                            ) {
+                                                                val curX = this.value.x
+                                                                val curY = this.value.y
+                                                                dragVisualTranslationX = (curX - startLayer.x) * canvasWidthPx
+                                                                dragVisualTranslationY = (curY - startLayer.y) * canvasHeightPx
+                                                                val cur = latestLayers.value.find { it.id == layer.id } ?: startLayer
+                                                                viewModel.updateLayer(cur.copy(x = curX, y = curY))
                                                             }
-
-                                                            val jobY = launch {
-                                                                animY.animateTo(
-                                                                    targetValue = finalTargetY,
-                                                                    initialVelocity = velFractionY,
-                                                                    animationSpec = spring(
-                                                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                                                        stiffness = Spring.StiffnessMediumLow
-                                                                    )
-                                                                ) {
-                                                                    val cur = latestLayers.value.find { it.id == layer.id } ?: startLayer
-                                                                    viewModel.updateLayer(cur.copy(y = this.value))
-                                                                }
-                                                            }
-
-                                                            jobX.join()
-                                                            jobY.join()
                                                             val finalCur = latestLayers.value.find { it.id == layer.id } ?: startLayer
                                                             viewModel.updateLayer(finalCur.copy(x = finalTargetX, y = finalTargetY))
+                                                            activeDragLayerId = null
+                                                            dragVisualTranslationX = 0f
+                                                            dragVisualTranslationY = 0f
                                                         }
+                                                    } else {
+                                                        val finalCur = latestLayers.value.find { it.id == layer.id } ?: startLayer
+                                                        viewModel.updateLayer(finalCur.copy(x = finalTargetX, y = finalTargetY))
+                                                        activeDragLayerId = null
+                                                        dragVisualTranslationX = 0f
+                                                        dragVisualTranslationY = 0f
                                                     }
+                                                } else {
+                                                    activeDragLayerId = null
+                                                    dragVisualTranslationX = 0f
+                                                    dragVisualTranslationY = 0f
                                                 }
 
                                                 // If user did not drag or pinch, process tap or double-tap
@@ -716,15 +737,15 @@ fun CollageEditorScreen(
                                                     } else {
                                                         lastTapTime = now
                                                         lastTapLayerId = layer.id
-                                                        // Tap on unfilled photo frame opens photo picker immediately
-                                                        if (cur.imageUri == null) {
-                                                            photoPickerLauncher.launch(
-                                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                                            )
-                                                        }
                                                     }
                                                 }
                                             }
+                                        }
+                                    }
+                                    .graphicsLayer {
+                                        if (isThisLayerDragging) {
+                                            translationX = dragVisualTranslationX
+                                            translationY = dragVisualTranslationY
                                         }
                                     }
                             ) {
