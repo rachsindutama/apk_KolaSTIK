@@ -50,7 +50,7 @@ Jika Anda ingin mengembangkan atau melakukan build sendiri dari source code:
 
 ## Dukungan & Traktir Kopi
 
-Aplikasi **KolaSTIK** dikembangkan dengan penuh penasaran dan dedikasi oleh **Saya Sendiri**. Jika aplikasi ini bermanfaat untuk karya, bisnis, atau hobi Anda, Anda dapat mendukung pengembangan lebih lanjut dengan cara **Traktir Kopi** ☕ melalui ShopeePay atau QRIS nasional:
+Aplikasi **KolaSTIK** dikembangkan dengan penuh dedikasi oleh **Saya Sendiri**. Jika aplikasi ini bermanfaat untuk karya, bisnis, atau hobi Anda, Anda dapat mendukung pengembangan lebih lanjut dengan cara **Traktir Kopi** ☕ melalui ShopeePay atau QRIS nasional:
 
 | Platform | Keterangan |
 | :--- | :--- |
