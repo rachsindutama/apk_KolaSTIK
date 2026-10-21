@@ -58,7 +58,7 @@ Aplikasi **KolaSTIK** dikembangkan dengan penuh penasaran dan dedikasi oleh **Sa
 | **Nomor ShopeePay** | `(+62) 82192222772` |
 | **Metode Pembayaran** | QRIS (Mendukung semua Bank & E-Wallet) |
 <img width="242" height="400" alt="WhatsApp Image 2026-10-17 at 21 46 58" src="https://github.com/user-attachments/assets/dda25e1d-e1a7-4a9b-9220-c33eaecefd45" />
-> **Terima kasih banyak atas dukungan, apresiasi, dan kebaikan Anda!**
+**Terima kasih banyak atas dukungan, apresiasi, dan kebaikan Anda!**
 
 ---
 
